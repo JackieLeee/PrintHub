@@ -1,26 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { HubInfo, HubStatus, PrintJobMeta } from "@virt-printer/shared";
-import { hubIdFromStatus, hubInfoFromStatus } from "@virt-printer/shared";
+import type { HubStatus, PrintJobMeta } from "@virt-printer/shared";
+import { DEFAULT_TCP_PORT, hubIdFromStatus } from "@virt-printer/shared";
 import { RelayClient } from "@virt-printer/relay-client";
 import { isMeaningfulPrintJob } from "@virt-printer/escpos";
 import { parseTspl } from "@virt-printer/tspl";
 import { renderEscPosPreview, renderTsplToCanvas } from "@virt-printer/renderer";
+import { LanguageSwitcher } from "./components/LanguageSwitcher";
 import { NetworkPanel } from "./components/NetworkPanel";
 import { PrintHistory } from "./components/PrintHistory";
 import { PreviewPanel } from "./components/PreviewPanel";
-import { HubSelector } from "./components/HubSelector";
 import { RawPrintPanel } from "./components/RawPrintPanel";
-import { discoverHubs, hubFromWsUrl } from "./lib/discovery";
-import {
-  adaptHubForClient,
-  loadRecentHubs,
-  loadSelectedHubId,
-  mergeHubLists,
-  preferLocalWsUrl,
-  rememberHub,
-  saveSelectedHubId,
-} from "./lib/hub-storage";
+import { hubFromWsUrl } from "./lib/discovery";
 import { flushHistory, loadJobs, recordToJob, saveJob } from "./store/history";
+import { useLocale } from "./i18n/context";
 
 export interface StoredJob extends PrintJobMeta {
   payload: Uint8Array;
@@ -31,26 +23,28 @@ function initialWsUrl(): string {
   const params = new URLSearchParams(window.location.search);
   const override = params.get("ws");
   if (override) return override;
-  const recent = loadRecentHubs()[0];
-  if (recent) return preferLocalWsUrl(recent.wsUrl);
-  const host = window.location.hostname === "localhost" ? "localhost" : window.location.hostname;
-  return `ws://${host}:8080`;
+
+  if (import.meta.env.DEV) {
+    const host = window.location.hostname === "localhost" ? "localhost" : window.location.hostname;
+    return `ws://${host}:8081`;
+  }
+
+  const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+  return `${proto}//${window.location.host}`;
 }
 
 export function App() {
-  const [wsUrl, setWsUrl] = useState(initialWsUrl);
+  const { t, format } = useLocale();
+  const [wsUrl] = useState(initialWsUrl);
   const [connected, setConnected] = useState(false);
   const [status, setStatus] = useState<HubStatus | null>(null);
   const [jobs, setJobs] = useState<StoredJob[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [historyReady, setHistoryReady] = useState(false);
-  const [hubs, setHubs] = useState<HubInfo[]>(() => loadRecentHubs());
-  const [selectedHubId, setSelectedHubId] = useState<string | null>(() => loadSelectedHubId());
-  const [scanning, setScanning] = useState(false);
   const clientRef = useRef<RelayClient | null>(null);
   const activeHubIdRef = useRef<string>("");
 
-  const activeHubId = status ? hubIdFromStatus(status) : selectedHubId ?? hubFromWsUrl(wsUrl).id;
+  const activeHubId = status ? hubIdFromStatus(status) : hubFromWsUrl(wsUrl).id;
 
   const reloadHistory = useCallback(async (hubId: string) => {
     const records = await loadJobs(hubId);
@@ -63,8 +57,7 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    const hubId = selectedHubId ?? hubFromWsUrl(wsUrl).id;
-    loadJobs(hubId)
+    loadJobs(activeHubId)
       .then((records) => {
         const loaded = records.map((r) => {
           const { meta, payload } = recordToJob(r);
@@ -74,52 +67,33 @@ export function App() {
         if (loaded[0]) setSelectedId(loaded[0].id);
       })
       .finally(() => setHistoryReady(true));
-  }, [selectedHubId, wsUrl]);
+  }, [activeHubId]);
 
   useEffect(() => {
     activeHubIdRef.current = activeHubId;
   }, [activeHubId]);
 
-  const addJob = useCallback(
-    (meta: PrintJobMeta, payload: Uint8Array) => {
-      const hubId = activeHubIdRef.current || meta.hubId || "unknown";
-      const enriched = { ...meta, hubId };
-      setJobs((prev) => {
-        const next = [{ ...enriched, payload }, ...prev.filter((j) => j.id !== meta.id)];
-        return next;
-      });
-      setSelectedId(meta.id);
-      void saveJob(enriched, payload, hubId);
-    },
-    [],
-  );
+  const addJob = useCallback((meta: PrintJobMeta, payload: Uint8Array) => {
+    const hubId = activeHubIdRef.current || meta.hubId || "unknown";
+    const enriched = { ...meta, hubId };
+    setJobs((prev) => {
+      const next = [{ ...enriched, payload }, ...prev.filter((j) => j.id !== meta.id)];
+      return next;
+    });
+    setSelectedId(meta.id);
+    void saveJob(enriched, payload, hubId);
+  }, []);
 
   const connect = useCallback(() => {
     clientRef.current?.disconnect();
-    const url = preferLocalWsUrl(wsUrl);
-    const client = new RelayClient(url, {
+    const client = new RelayClient(wsUrl, {
       onOpen: () => setConnected(true),
       onClose: () => {
         setConnected(false);
         setStatus(null);
       },
       onError: () => setConnected(false),
-      onStatus: (s) => {
-        setStatus(s);
-        const hub = adaptHubForClient(hubInfoFromStatus(s, "scan"));
-        setHubs((prev) => {
-          const merged = mergeHubLists([hub], prev);
-          return merged;
-        });
-        setSelectedHubId((prevId) => {
-          if (!prevId || prevId.startsWith("pending:") || prevId === hub.id) {
-            saveSelectedHubId(hub.id);
-            return hub.id;
-          }
-          return prevId;
-        });
-        rememberHub(hub);
-      },
+      onStatus: setStatus,
       onJob: addJob,
     });
     clientRef.current = client;
@@ -136,40 +110,8 @@ export function App() {
 
   useEffect(() => {
     if (!connected || !status) return;
-    const hubId = hubIdFromStatus(status);
-    if (hubId !== selectedHubId) return;
-    void reloadHistory(hubId);
-  }, [connected, status, selectedHubId, reloadHistory]);
-
-  const selectHub = useCallback(
-    (hub: HubInfo) => {
-      const normalized = adaptHubForClient(hub);
-      setSelectedHubId(normalized.id);
-      saveSelectedHubId(normalized.id);
-      const nextUrl = preferLocalWsUrl(normalized.wsUrl);
-      if (nextUrl !== wsUrl) {
-        setWsUrl(nextUrl);
-      } else {
-        connect();
-      }
-      rememberHub(normalized);
-      setHubs((prev) => mergeHubLists([normalized], prev));
-      void reloadHistory(normalized.id);
-    },
-    [reloadHistory, wsUrl, connect],
-  );
-
-  const scanHubs = useCallback(async () => {
-    setScanning(true);
-    try {
-      const found = await discoverHubs({ extraIps: ["127.0.0.1"] });
-      const adapted = found.map(adaptHubForClient);
-      setHubs((prev) => mergeHubLists(adapted, prev, loadRecentHubs()));
-      if (adapted[0] && !selectedHubId) selectHub(adapted[0]);
-    } finally {
-      setScanning(false);
-    }
-  }, [selectHub, selectedHubId]);
+    void reloadHistory(hubIdFromStatus(status));
+  }, [connected, status, reloadHistory]);
 
   const visibleJobs = useMemo(
     () => jobs.filter((j) => isMeaningfulPrintJob(j.payload, j.protocol)),
@@ -208,6 +150,9 @@ export function App() {
       });
       return;
     }
+
+    setPreview({ imageDataUrl: null, paperWidth: 384, canvas: null, warnings: [] });
+
     let cancelled = false;
     void renderEscPosPreview(selectedJob.payload).then((result) => {
       if (!cancelled) {
@@ -224,51 +169,49 @@ export function App() {
     };
   }, [selectedJob]);
 
-  const currentHub = hubs.find((h) => h.id === (selectedHubId ?? activeHubId));
+  const tcpPort = status?.tcpPort ?? DEFAULT_TCP_PORT;
+  const hostIp = status?.hostIp;
 
   return (
     <div className="app">
       <header className="header">
         <div>
-          <h1>virt-printer-hub</h1>
+          <h1>{t.app.title}</h1>
           <p className="subtitle">
-            虚拟打印机 · {currentHub ? currentHub.hostIp : "未选择 Hub"}
+            {hostIp
+              ? format(t.app.subtitle, { host: hostIp, tcp: tcpPort })
+              : t.app.subtitleOffline}
           </p>
         </div>
         <div className="header-actions">
-          {!historyReady && <span className="badge">加载历史…</span>}
+          <LanguageSwitcher />
+          {!historyReady && <span className="badge">{t.app.loadingHistory}</span>}
         </div>
       </header>
 
-      <section className="top-bar">
-        <div className="panel top-panel">
-          <h2>Hub 选择</h2>
-          <HubSelector
-            hubs={hubs}
-            selectedHubId={selectedHubId ?? activeHubId}
-            wsUrl={wsUrl}
-            connected={connected}
-            scanning={scanning}
-            onScan={() => void scanHubs()}
-            onSelectHub={selectHub}
-            onWsUrlChange={setWsUrl}
-            onConnect={connect}
-          />
-        </div>
-        <div className="panel top-panel">
-          <h2>网络与端口</h2>
-          <NetworkPanel status={status} connected={connected} wsUrl={wsUrl} />
+      <section className="top-section">
+        <div className="top-bar">
+          <div className="panel top-panel">
+            <h2>{t.sections.network}</h2>
+            <NetworkPanel status={status} connected={connected} wsUrl={wsUrl} onReconnect={connect} />
+          </div>
+
+          <div className="panel debug-top-panel top-panel">
+            <h2>{t.sections.debugPrint}</h2>
+            <p className="debug-top-hint">{t.sections.debugPrintHint}</p>
+            <RawPrintPanel status={status} />
+          </div>
         </div>
       </section>
 
       <div className="main-split">
         <aside className="panel history-panel">
-          <h2>打印历史</h2>
+          <h2>{t.sections.history}</h2>
           <PrintHistory jobs={visibleJobs} selectedId={selectedId} onSelect={setSelectedId} hubId={activeHubId} />
         </aside>
 
         <section className="panel preview-panel">
-          <h2>预览</h2>
+          <h2>{t.sections.preview}</h2>
           <PreviewPanel
             job={selectedJob}
             imageDataUrl={preview.imageDataUrl}
@@ -278,13 +221,6 @@ export function App() {
           />
         </section>
       </div>
-
-      <details className="debug-section">
-        <summary>调试打印 · File / Hex / Base64</summary>
-        <div className="panel debug-panel">
-          <RawPrintPanel status={status} />
-        </div>
-      </details>
     </div>
   );
 }

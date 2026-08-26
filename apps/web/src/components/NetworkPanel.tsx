@@ -1,11 +1,13 @@
 import { useMemo } from "react";
 import type { DeviceConnection, HubStatus, WsClientInfo } from "@virt-printer/shared";
 import { DEFAULT_HTTP_PORT, DEFAULT_TCP_PORT, DEFAULT_WS_PORT } from "@virt-printer/shared";
+import { useLocale } from "../i18n/context";
 
 interface Props {
   status: HubStatus | null;
   connected: boolean;
   wsUrl: string;
+  onReconnect: () => void;
 }
 
 interface GroupedConnection {
@@ -52,7 +54,8 @@ function groupWsClients(clients: WsClientInfo[]): GroupedConnection[] {
   return [...map.values()];
 }
 
-export function NetworkPanel({ status, connected, wsUrl }: Props) {
+export function NetworkPanel({ status, connected, wsUrl, onReconnect }: Props) {
+  const { t, format } = useLocale();
   const hostIp = status?.hostIp ?? "—";
   const tcpPort = status?.tcpPort ?? DEFAULT_TCP_PORT;
   const wsPort = status?.wsPort ?? DEFAULT_WS_PORT;
@@ -64,40 +67,49 @@ export function NetworkPanel({ status, connected, wsUrl }: Props) {
     return [...tcp, ...ws];
   }, [status?.connections, status?.wsClients]);
 
+  const bridgeStatus = connected
+    ? status?.listening
+      ? t.network.listening
+      : t.network.bridgeOnline
+    : t.network.waitingBridge;
+
   return (
     <div className="network-panel network-panel-compact">
       <div className="network-row highlight">
         <div>
-          <div className="network-role">本机 Hub</div>
+          <div className="network-role">{t.network.localHub}</div>
           <div className="network-meta">
             {hostIp} · TCP {tcpPort} / WS {wsPort} / HTTP {httpPort}
           </div>
         </div>
-        <span className={`pill ${status?.listening ? "ok" : "warn"}`}>
-          {connected ? (status?.listening ? "监听中" : "Bridge 在线") : "等待 Bridge"}
-        </span>
+        <div className="network-row-actions">
+          <span className={`pill ${connected && status?.listening ? "ok" : "warn"}`}>{bridgeStatus}</span>
+          <button type="button" className="btn-sm" onClick={onReconnect}>
+            {t.network.reconnect}
+          </button>
+        </div>
       </div>
 
       <div className="network-hint">
-        POS 指向 <code>{hostIp}:{tcpPort}</code>
+        {t.network.posHint} <code>{hostIp}:{tcpPort}</code>
       </div>
 
       {grouped.length === 0 ? (
-        <div className="empty">暂无连接</div>
+        <div className="empty">{t.network.noConnections}</div>
       ) : (
         grouped.map((g) => (
           <div key={g.key} className="network-row">
             <div>
               <div className="network-role">
-                {g.kind === "TCP" ? `TCP ${g.ip}` : `WebSocket ${g.ip}`}
+                {g.kind === "TCP" ? `TCP ${g.ip}` : `${t.network.wsLabel} ${g.ip}`}
                 {g.count > 1 ? ` ×${g.count}` : ""}
               </div>
               <div className="network-meta">
-                {g.kind === "TCP" && g.protocol ? `${g.protocol}` : "Web UI 订阅"}
+                {g.kind === "TCP" && g.protocol ? `${g.protocol}` : t.network.webSubscribe}
                 {g.ports.length > 0 && g.ports.length <= 3
                   ? ` · ${g.ports.join(", ")}`
                   : g.ports.length > 3
-                    ? ` · ${g.ports.length} 个端口`
+                    ? ` · ${format(t.network.portCount, { n: g.ports.length })}`
                     : ""}
               </div>
             </div>
@@ -106,7 +118,9 @@ export function NetworkPanel({ status, connected, wsUrl }: Props) {
         ))
       )}
 
-      <div className="network-foot">WebSocket: {wsUrl}</div>
+      <div className="network-foot">
+        {t.network.wsLabel}: {wsUrl}
+      </div>
     </div>
   );
 }

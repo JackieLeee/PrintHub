@@ -16,7 +16,6 @@ import type {
 import {
   DEFAULT_HTTP_PORT,
   DEFAULT_TCP_PORT,
-  DEFAULT_WS_PORT,
   TCP_IDLE_TIMEOUT_MS,
   WS_PING_INTERVAL_MS,
 } from "@virt-printer/shared";
@@ -24,6 +23,7 @@ import { buildJobMessages } from "./chunking.js";
 import { startHttpServer } from "./http-server.js";
 import { imageBufferToPrintPayload, type ImagePrintOptions } from "./image-print.js";
 import { startMdnsAdvertise, type MdnsHandle } from "./mdns.js";
+import { resolveWebRoot } from "./web-static.js";
 
 export interface BridgeOptions {
   tcpPort?: number;
@@ -66,19 +66,27 @@ export class VirtPrinterBridge {
   private jobCounter = 0;
   private pingTimer: ReturnType<typeof setInterval> | null = null;
   private mdns: MdnsHandle | null = null;
+  private webRoot: string | null = null;
 
   constructor(options: BridgeOptions = {}) {
     this.hubInstanceId = randomUUID();
     this.tcpPort = options.tcpPort ?? DEFAULT_TCP_PORT;
-    this.wsPort = options.wsPort ?? DEFAULT_WS_PORT;
     this.httpPort = options.httpPort ?? DEFAULT_HTTP_PORT;
+    // WebSocket shares the HTTP server port (unified UI + API + WS).
+    this.wsPort = options.wsPort ?? this.httpPort;
     this.host = options.host ?? "0.0.0.0";
   }
 
   async start(): Promise<void> {
     await this.startTcp();
-    await this.startWebSocket();
-    this.httpServer = startHttpServer({ port: this.httpPort, host: this.host, bridge: this });
+    this.webRoot = resolveWebRoot();
+    this.httpServer = startHttpServer({
+      port: this.httpPort,
+      host: this.host,
+      bridge: this,
+      webRoot: this.webRoot,
+    });
+    await this.attachWebSocket(this.httpServer);
     this.startWsPing();
     this.mdns = startMdnsAdvertise({
       name: `virt-printer-${hostname()}`,
@@ -88,9 +96,17 @@ export class VirtPrinterBridge {
       httpPort: this.httpPort,
     });
     this.broadcastStatus();
-    console.log(
-      `[bridge] TCP ${this.tcpPort} · WS ${this.wsPort} · HTTP ${this.httpPort} · LAN ${getLocalIp()}`,
-    );
+    const lan = getLocalIp();
+    if (this.webRoot) {
+      console.log(
+        `[bridge] UI http://${lan}:${this.httpPort} · TCP ${this.tcpPort} · WS ${this.wsPort} (same port)`,
+      );
+    } else {
+      console.log(
+        `[bridge] TCP ${this.tcpPort} · HTTP ${this.httpPort} · WS ${this.wsPort} · LAN ${lan}`,
+      );
+      console.log("[bridge] Web UI not found — run: pnpm --filter @virt-printer/web build");
+    }
   }
 
   async stop(): Promise<void> {
@@ -155,9 +171,9 @@ export class VirtPrinterBridge {
     });
   }
 
-  private startWebSocket(): Promise<void> {
+  private attachWebSocket(server: HttpServer): Promise<void> {
     return new Promise((resolve) => {
-      this.wss = new WebSocketServer({ port: this.wsPort, host: this.host });
+      this.wss = new WebSocketServer({ server });
       this.wss.on("connection", (ws, req) => {
         // Drop dead / duplicate WebSocket clients (StrictMode, HMR, stale tabs)
         for (const [id, client] of this.wsClients) {

@@ -1,96 +1,69 @@
 # virt-printer-hub
 
-网页端虚拟打印机：完整 ESC/POS + TSPL 协议支持、图片打印、多设备并发、小票可视化预览。
+> **中文：** [README.zh.md](./README.zh.md)
 
-## 架构
+## Background
 
-- **Web UI**（`apps/web`）— 部署到 GitHub Pages，展示打印历史与预览
-- **Local Bridge**（`packages/bridge`）— TCP 9100、WebSocket 8080、HTTP 8081
-- **协议包** — `@virt-printer/escpos`、`@virt-printer/tspl`、`@virt-printer/renderer`
+Cash registers, POS apps, and label printers usually send **raw ESC/POS or TSPL** over TCP — not PDF or images. Without a physical printer, it is hard to tell whether the bytes are correct.
 
-## 功能（Phase 2–4）
+**virt-printer-hub** acts as a **LAN virtual printer**: it accepts the same payloads as real hardware and shows them in a browser — live preview, history, samples, and raw debug submit.
 
-### Bridge（Phase 4–5）
-- TCP 保活 + 120s 空闲超时 · WebSocket 30s ping
-- 大 payload 分块（>256KB）· HTTP 8081 图片上传
-- **mDNS** 广播 `_virt-printer._tcp`（Bonjour）
+## What it does
 
-### Web（Phase 5）
-- 局域网扫描发现 Hub（`/status` 探测）
-- 多 Hub 切换 · 最近 Hub 记忆（localStorage）
-- IndexedDB 按 Hub 隔离历史 · 批量写入防抖
+| Capability | Description |
+|------------|-------------|
+| **Receive** | ESC/POS receipts and TSPL labels on TCP **9100** |
+| **Preview** | Receipt/label rendering (aligned with [EscPosInspector](https://github.com/amin-norollah/EscPosInspector)) |
+| **History** | Recent jobs stored in the browser; replay and export (file / hex / Base64) |
+| **Debug** | One-click ESC/POS & TSPL samples; File / Hex / Base64 raw print |
 
-### ESC/POS
-- 文本样式（加粗/下划线/倍宽倍高）、对齐、走纸、切纸、钱箱
-- 条码 `GS k`、二维码 `GS ( k`、光栅图 `GS v 0` / `ESC *`
-- GBK / UTF-8 编码
+| Port | Role |
+|------|------|
+| **9100** | TCP — print data from POS or test tools |
+| **8081** | HTTP + WebSocket + embedded Web UI |
 
-### TSPL
-- 标签设置：`SIZE` / `GAP` / `DIRECTION` / `REFERENCE` / `OFFSET` / `CLS`
-- 文本：`TEXT` / `BLOCK`（换行、旋转）
-- 图形：`BOX` / `BAR` / `CIRCLE` / `ELLIPSE` / `REVERSE`
-- 条码 / 二维码：`BARCODE` / `QRCODE`
-- 位图：`BITMAP` 行内十六进制 + 尾随二进制
+## Usage
 
-### 通用
-- Canvas 标签/小票预览
-- IndexedDB 最近 200 条历史
-
-## 快速开始
+**Requirements:** Node.js 20+, pnpm 9+
 
 ```bash
 pnpm install
-
-# 终端 1：启动 Bridge（TCP 9100 + WS 8080 + HTTP 8081）
-pnpm dev:bridge
-
-# 终端 2：启动 Web UI
-pnpm dev:web
+pnpm dev      # build Web UI + start Bridge
+# or: pnpm start   (build + run, no watch)
 ```
 
-浏览器打开 http://localhost:5173 ，POS 或测试工具向 `本机IP:9100` 发送打印数据。
+1. Open **http://localhost:8081** (or your machine’s LAN IP).
+2. Point the POS / app at **`<host>:9100`**.
+3. In the UI, try **Print ESC/POS Sample** or **Print TSPL Sample** to verify.
 
-### 测试 ESC/POS
+**TCP smoke test:**
 
 ```bash
 printf '\x1b@\x1ba\x01Hello virt-printer-hub\n\x1dV\x00' | nc -N localhost 9100
 ```
 
-### 测试 TSPL
+**HTTP raw submit:**
 
 ```bash
-printf 'SIZE 40 mm,30 mm\nGAP 2 mm,0\nTEXT 10,10,"0",0,1,1,"TSPL Label"\nPRINT 1\n' | nc localhost 9100
+curl -X POST http://localhost:8081/print/raw \
+  -H "Content-Type: application/octet-stream" \
+  --data-binary @sample.bin
 ```
 
-### 测试图片打印（HTTP）
+## Architecture
 
-```bash
-curl -X POST "http://localhost:8081/print/image?protocol=escpos&width=384" \
-  -H "Content-Type: image/png" \
-  --data-binary @receipt.png
-```
+![virt-printer-hub architecture](./docs/assets/architecture.en.png)
 
-## GitHub Pages
+**Monorepo layout**
 
-推送到 `main` 分支后，GitHub Actions 自动构建并部署。Bridge 仍需在本地或局域网机器运行。
+- `packages/bridge` — TCP listener, HTTP API, WebSocket relay, static UI
+- `packages/web` — React dashboard
+- `packages/escpos`, `packages/tspl`, `packages/renderer` — parse and render
+- `packages/shared`, `packages/relay-client` — types and WS client
 
-部署 URL：`https://<user>.github.io/virt-printer-hub/`
+One process (`pnpm dev` / `pnpm start`): Bridge builds and serves `apps/web/dist` on port **8081**.
 
-本地开发时 Web UI 默认连接 `ws://localhost:8080`；生产环境可通过 URL 参数指定 Bridge 地址，例如：
+---
 
-`https://<user>.github.io/virt-printer-hub/?ws=ws://192.168.1.42:8080`
-
-## 包说明
-
-| 包 | 说明 |
-|---|---|
-| `@virt-printer/shared` | 共享类型与常量 |
-| `@virt-printer/escpos` | ESC/POS 解析 |
-| `@virt-printer/tspl` | TSPL 解析 |
-| `@virt-printer/renderer` | Canvas 小票/标签渲染 |
-| `@virt-printer/relay-client` | WebSocket 客户端 |
-| `@virt-printer/bridge` | Node.js TCP + WS 服务 |
-
-## License
-
-MIT
+MIT License — see [LICENSE](./LICENSE).  
+Contributing: [CONTRIBUTING.md](./CONTRIBUTING.md) · Security: [SECURITY.md](./SECURITY.md)

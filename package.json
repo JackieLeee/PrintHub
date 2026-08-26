@@ -2,9 +2,11 @@
   "name": "virt-printer-hub",
   "private": true,
   "scripts": {
-    "dev": "turbo dev",
-    "dev:web": "pnpm --filter @virt-printer/web dev",
+    "dev": "pnpm build:web && pnpm --filter @virt-printer/bridge dev",
     "dev:bridge": "pnpm --filter @virt-printer/bridge dev",
+    "dev:web": "pnpm --filter @virt-printer/web dev",
+    "build:web": "pnpm --filter @virt-printer/web build",
+    "start": "pnpm build:web && pnpm --filter @virt-printer/bridge start",
     "build": "turbo build",
     "lint": "turbo lint"
   },

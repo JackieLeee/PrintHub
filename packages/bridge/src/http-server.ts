@@ -1,10 +1,12 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { VirtPrinterBridge } from "./bridge.js";
+import { tryServeStatic } from "./web-static.js";
 
 export interface HttpServerOptions {
   port: number;
   host: string;
   bridge: VirtPrinterBridge;
+  webRoot?: string | null;
 }
 
 function readBody(req: IncomingMessage, limit = 20 * 1024 * 1024): Promise<Buffer> {
@@ -46,13 +48,17 @@ function corsPreflight(res: ServerResponse): void {
 }
 
 export function startHttpServer(options: HttpServerOptions): Server {
-  const { port, host, bridge } = options;
+  const { port, host, bridge, webRoot = null } = options;
 
   const server = createServer(async (req, res) => {
     const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
 
     if (req.method === "OPTIONS") {
       corsPreflight(res);
+      return;
+    }
+
+    if (webRoot && (await tryServeStatic(webRoot, req, res, url.pathname))) {
       return;
     }
 

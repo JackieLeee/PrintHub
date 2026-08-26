@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { HubInfo } from "@virt-printer/shared";
 import { hubEndpointKey } from "@virt-printer/shared";
+import { useLocale } from "../i18n/context";
 import { hubFromWsUrl } from "../lib/discovery";
 
 interface Props {
@@ -26,6 +27,7 @@ export function HubSelector({
   onWsUrlChange,
   onConnect,
 }: Props) {
+  const { t } = useLocale();
   const [showManual, setShowManual] = useState(false);
 
   function connectManual() {
@@ -38,18 +40,18 @@ export function HubSelector({
     <div className="hub-selector">
       <div className="hub-toolbar">
         <button type="button" onClick={onScan} disabled={scanning}>
-          {scanning ? "扫描中…" : "扫描局域网 Hub"}
+          {scanning ? t.hub.scanning : t.hub.scan}
         </button>
         <button type="button" onClick={onConnect}>
-          重连
+          {t.hub.reconnect}
         </button>
         <span className={`badge ${connected ? "ok" : "err"}`}>
-          {connected ? "已连接" : "未连接"}
+          {connected ? t.hub.connected : t.hub.disconnected}
         </span>
       </div>
 
       {hubs.length === 0 ? (
-        <div className="empty">未发现 Hub，请启动 Bridge 或手动输入 WS 地址</div>
+        <div className="empty">{t.hub.empty}</div>
       ) : (
         <ul className="hub-list">
           {hubs.map((hub) => (
@@ -74,7 +76,7 @@ export function HubSelector({
       )}
 
       <button type="button" className="link-btn" onClick={() => setShowManual((v) => !v)}>
-        {showManual ? "隐藏手动输入" : "手动 WS 地址"}
+        {showManual ? t.hub.manualHide : t.hub.manualShow}
       </button>
 
       {showManual && (
@@ -85,7 +87,7 @@ export function HubSelector({
             placeholder="ws://192.168.1.42:8080"
           />
           <button type="button" onClick={connectManual}>
-            连接
+            {t.hub.connect}
           </button>
         </div>
       )}

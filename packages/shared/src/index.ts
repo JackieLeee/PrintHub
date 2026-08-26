@@ -115,7 +115,8 @@ export type BridgeMessage =
   | { type: "ws.close"; sessionId: string };
 
 export const DEFAULT_TCP_PORT = 9100;
-export const DEFAULT_WS_PORT = 8080;
+/** WebSocket port — defaults to HTTP port when Bridge serves the unified UI. */
+export const DEFAULT_WS_PORT = 8081;
 export const DEFAULT_HTTP_PORT = 8081;
 export const DEFAULT_HISTORY_LIMIT = 200;
 

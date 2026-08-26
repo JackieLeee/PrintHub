@@ -1,6 +1,7 @@
 node_modules
 dist
 .turbo
+.idea/
 *.local
 .DS_Store
 .env

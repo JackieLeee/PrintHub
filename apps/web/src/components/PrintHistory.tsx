@@ -1,4 +1,6 @@
 import type { StoredJob } from "../App";
+import { useLocale } from "../i18n/context";
+import type { Locale } from "../i18n/types";
 
 interface Props {
   jobs: StoredJob[];
@@ -7,7 +9,8 @@ interface Props {
   onSelect: (id: string) => void;
 }
 
-function formatTime(ts: number): string {
+function formatTime(ts: number, locale: Locale): string {
+  const tag = locale === "zh" ? "zh-CN" : "en-US";
   const d = new Date(ts);
   const now = new Date();
   const isToday =
@@ -15,9 +18,9 @@ function formatTime(ts: number): string {
     d.getMonth() === now.getMonth() &&
     d.getDate() === now.getDate();
   if (isToday) {
-    return d.toLocaleTimeString("zh-CN", { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    return d.toLocaleTimeString(tag, { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
   }
-  return d.toLocaleString("zh-CN", {
+  return d.toLocaleString(tag, {
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",
@@ -32,19 +35,25 @@ function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function jobTitle(job: StoredJob): string {
-  if (job.protocol === "tspl") return job.labelSize ? `标签 ${job.labelSize}` : "标签";
-  if (job.byteLength >= 4096) return "小票（含图片）";
-  return "小票";
-}
+export function PrintHistory({ jobs, selectedId, onSelect }: Props) {
+  const { t, locale, format } = useLocale();
 
-export function PrintHistory({ jobs, selectedId, hubId, onSelect }: Props) {
+  function jobTitle(job: StoredJob): string {
+    if (job.protocol === "tspl") {
+      return job.labelSize
+        ? format(t.history.labelWithSize, { size: job.labelSize })
+        : t.history.label;
+    }
+    if (job.byteLength >= 4096) return t.history.receiptWithImage;
+    return t.history.receipt;
+  }
+
   if (jobs.length === 0) {
     return (
       <div className="empty">
-        当前 Hub 暂无打印记录
+        {t.history.empty}
         <br />
-        <span className="empty-hint">向 Bridge TCP 9100 发送数据即可</span>
+        <span className="empty-hint">{t.history.emptyHint}</span>
       </div>
     );
   }
@@ -60,7 +69,7 @@ export function PrintHistory({ jobs, selectedId, hubId, onSelect }: Props) {
           >
             <div className="history-head">
               <span className={`tag ${job.protocol}`}>{job.protocol.toUpperCase()}</span>
-              <span className="history-time">{formatTime(job.receivedAt)}</span>
+              <span className="history-time">{formatTime(job.receivedAt, locale)}</span>
             </div>
             <div className="history-title">{jobTitle(job)}</div>
             <div className="history-foot">

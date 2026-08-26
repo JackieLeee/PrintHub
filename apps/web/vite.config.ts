@@ -9,5 +9,10 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
+    proxy: {
+      "/status": "http://localhost:8081",
+      "/health": "http://localhost:8081",
+      "/print": "http://localhost:8081",
+    },
   },
 });
