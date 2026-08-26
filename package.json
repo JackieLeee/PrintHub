@@ -1,0 +1,16 @@
+{
+  "name": "virt-printer-hub",
+  "private": true,
+  "scripts": {
+    "dev": "turbo dev",
+    "dev:web": "pnpm --filter @virt-printer/web dev",
+    "dev:bridge": "pnpm --filter @virt-printer/bridge dev",
+    "build": "turbo build",
+    "lint": "turbo lint"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.4",
+    "typescript": "^5.8.3"
+  },
+  "packageManager": "pnpm@9.15.9"
+}

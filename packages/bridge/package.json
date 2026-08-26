@@ -1,0 +1,28 @@
+{
+  "name": "@virt-printer/bridge",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "virt-printer-bridge": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsx watch src/cli.ts",
+    "start": "node dist/cli.js",
+    "test": "tsx --test src/chunking.test.ts"
+  },
+  "dependencies": {
+    "@virt-printer/shared": "workspace:*",
+    "sharp": "^0.34.2",
+    "bonjour-service": "^1.3.0",
+    "ws": "^8.18.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "@types/ws": "^8.18.1",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  }
+}

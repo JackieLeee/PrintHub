@@ -1,0 +1,70 @@
+export type TsplUnit = "mm" | "inch" | "dot";
+
+export type TsplCommand =
+  | { kind: "size"; width: number; height: number; unit: TsplUnit }
+  | { kind: "gap"; value: number; offset: number; unit: TsplUnit }
+  | { kind: "direction"; value: 0 | 1 }
+  | { kind: "reference"; x: number; y: number }
+  | { kind: "offset"; x: number; y: number }
+  | { kind: "cls" }
+  | { kind: "home" }
+  | { kind: "text"; x: number; y: number; font: string; rotation: number; xMul: number; yMul: number; content: string }
+  | {
+      kind: "block";
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      font: string;
+      rotation: number;
+      xMul: number;
+      yMul: number;
+      content: string;
+    }
+  | {
+      kind: "barcode";
+      x: number;
+      y: number;
+      format: string;
+      height: number;
+      readable: number;
+      rotation: number;
+      narrow: number;
+      wide: number;
+      data: string;
+    }
+  | { kind: "qrcode"; x: number; y: number; ecLevel: string; cellWidth: number; mode: string; data: string }
+  | { kind: "bitmap"; x: number; y: number; width: number; height: number; mode: number; data: Uint8Array }
+  | { kind: "box"; x: number; y: number; xEnd: number; yEnd: number; thickness: number; radius: number }
+  | { kind: "bar"; x: number; y: number; width: number; height: number }
+  | { kind: "circle"; x: number; y: number; diameter: number; thickness: number }
+  | { kind: "ellipse"; x: number; y: number; width: number; height: number; thickness: number }
+  | { kind: "reverse"; x: number; y: number; width: number; height: number }
+  | { kind: "print"; copies: number; sets: number };
+
+export interface TsplParseResult {
+  commands: TsplCommand[];
+  warnings: string[];
+}
+
+export interface TsplLabelMeta {
+  widthDots: number;
+  heightDots: number;
+  unit: TsplUnit;
+  direction: 0 | 1;
+  reference: { x: number; y: number };
+}
+
+export function defaultLabelMeta(): TsplLabelMeta {
+  return {
+    widthDots: 40 * 8,
+    heightDots: 30 * 8,
+    unit: "mm",
+    direction: 0,
+    reference: { x: 0, y: 0 },
+  };
+}
+
+/** TSC default: 203 dpi ≈ 8 dots/mm */
+export const DOTS_PER_MM = 8;
+export const DOTS_PER_INCH = 203;
