@@ -73,7 +73,13 @@ curl -X POST http://localhost:8081/print/raw \
 
 ## Star 趋势
 
-[![Star History Chart](https://api.star-history.com/svg?repos=JackieLeee/virt-printer-hub&type=Date)](https://star-history.com/#JackieLeee/virt-printer-hub&Date)
+<a href="https://www.star-history.com/?repos=JackieLeee%2Fvirt-printer-hub&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=JackieLeee/virt-printer-hub&type=date&theme=dark&legend=top-left&sealed_token=5vTp2kN2Rk2htmjqKbdcYEzHPHACTGKRblEW08e-5wqCuPr41LtoqOmJjIRJWfwjhDOprVY9FCwJSrD3KFNnznqcqLtkPY4FcAEWgeVJGupONbZI4QBR3VJElwzD5JdlgGcFmKlLNvPtdBXMKYLbVHVHpQtnw1YwEui_In1eWmz4kVFyzrUUYw4sN8dm" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=JackieLeee/virt-printer-hub&type=date&legend=top-left&sealed_token=5vTp2kN2Rk2htmjqKbdcYEzHPHACTGKRblEW08e-5wqCuPr41LtoqOmJjIRJWfwjhDOprVY9FCwJSrD3KFNnznqcqLtkPY4FcAEWgeVJGupONbZI4QBR3VJElwzD5JdlgGcFmKlLNvPtdBXMKYLbVHVHpQtnw1YwEui_In1eWmz4kVFyzrUUYw4sN8dm" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=JackieLeee/virt-printer-hub&type=date&legend=top-left&sealed_token=5vTp2kN2Rk2htmjqKbdcYEzHPHACTGKRblEW08e-5wqCuPr41LtoqOmJjIRJWfwjhDOprVY9FCwJSrD3KFNnznqcqLtkPY4FcAEWgeVJGupONbZI4QBR3VJElwzD5JdlgGcFmKlLNvPtdBXMKYLbVHVHpQtnw1YwEui_In1eWmz4kVFyzrUUYw4sN8dm" />
+ </picture>
+</a>
 
 ---
 
