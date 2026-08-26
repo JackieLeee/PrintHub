@@ -2,6 +2,14 @@
 
 > **English:** [README.md](./README.md)
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Node.js](https://img.shields.io/badge/Node.js-20%2B-green?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![pnpm](https://img.shields.io/badge/pnpm-9%2B-F69220?logo=pnpm&logoColor=white)](https://pnpm.io/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev/)
+[![GitHub Pages](https://github.com/JackieLeee/virt-printer-hub/actions/workflows/deploy-pages.yml/badge.svg)](https://github.com/JackieLeee/virt-printer-hub/actions/workflows/deploy-pages.yml)
+[![Live Demo](https://img.shields.io/badge/demo-GitHub%20Pages-blue)](https://jackieleee.github.io/virt-printer-hub/)
+
 ## 背景
 
 收银机、POS 和标签机通常通过 TCP 发送 **原始 ESC/POS 或 TSPL 字节流**，而不是 PDF。没有实体打印机时，很难确认发出的数据是否正确。
@@ -62,6 +70,10 @@ curl -X POST http://localhost:8081/print/raw \
 - `packages/shared`、`packages/relay-client` — 类型与 WS 客户端
 
 一条命令（`pnpm dev` / `pnpm start`）即可：Bridge 构建并托管 `apps/web/dist`，统一在 **8081** 端口访问。
+
+## Star 趋势
+
+[![Star History Chart](https://api.star-history.com/svg?repos=JackieLeee/virt-printer-hub&type=Date)](https://star-history.com/#JackieLeee/virt-printer-hub&Date)
 
 ---
 

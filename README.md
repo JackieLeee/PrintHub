@@ -2,6 +2,14 @@
 
 > **中文：** [README.zh.md](./README.zh.md)
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Node.js](https://img.shields.io/badge/Node.js-20%2B-green?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![pnpm](https://img.shields.io/badge/pnpm-9%2B-F69220?logo=pnpm&logoColor=white)](https://pnpm.io/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev/)
+[![GitHub Pages](https://github.com/JackieLeee/virt-printer-hub/actions/workflows/deploy-pages.yml/badge.svg)](https://github.com/JackieLeee/virt-printer-hub/actions/workflows/deploy-pages.yml)
+[![Live Demo](https://img.shields.io/badge/demo-GitHub%20Pages-blue)](https://jackieleee.github.io/virt-printer-hub/)
+
 ## Background
 
 Cash registers, POS apps, and label printers usually send **raw ESC/POS or TSPL** over TCP — not PDF or images. Without a physical printer, it is hard to tell whether the bytes are correct.
@@ -62,6 +70,10 @@ curl -X POST http://localhost:8081/print/raw \
 - `packages/shared`, `packages/relay-client` — types and WS client
 
 One process (`pnpm dev` / `pnpm start`): Bridge builds and serves `apps/web/dist` on port **8081**.
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=JackieLeee/virt-printer-hub&type=Date)](https://star-history.com/#JackieLeee/virt-printer-hub&Date)
 
 ---
 
