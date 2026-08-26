@@ -198,19 +198,7 @@ class EscPosParser {
       return true;
     }
     if (cmd === 0x2a && this.i + 4 < this.data.length) {
-      const mode = this.data[this.i + 2]!;
-      const nL = this.data[this.i + 3]!;
-      const nH = this.data[this.i + 4]!;
-      const width = nL + nH * 256;
-      const bytesPerCol = mode === 0 ? 1 : mode === 1 ? 2 : 3;
-      const height = 8 * bytesPerCol;
-      const byteLen = width * bytesPerCol;
-      if (this.i + 5 + byteLen <= this.data.length) {
-        const slice = this.data.slice(this.i + 5, this.i + 5 + byteLen);
-        this.commands.push({ kind: "bitImage", mode, width, height, data: slice });
-        this.i += 5 + byteLen;
-        return true;
-      }
+      return this.parseEscStarRun();
     }
 
     this.warnings.push(`Unhandled ESC 0x${cmd.toString(16)} at ${start}`);
@@ -306,6 +294,27 @@ class EscPosParser {
       return true;
     }
 
+    // GS k m n d... (types 0x41–0x49: length-prefixed)
+    if (m >= 0x41 && m <= 0x49) {
+      if (this.i + 3 >= this.data.length) return false;
+      const n = this.data[this.i + 3]!;
+      const dataBytes = this.data.slice(this.i + 4, this.i + 4 + n);
+      const data =
+        dataBytes.length > 0 && dataBytes[dataBytes.length - 1] === 0
+          ? new TextDecoder().decode(dataBytes.slice(0, -1))
+          : new TextDecoder().decode(dataBytes);
+      this.commands.push({
+        kind: "barcode",
+        symbology: symbologyFromGsK(m),
+        data,
+        height: this._barcodeHeight,
+        width: this._barcodeWidth,
+        hri: this._barcodeHri,
+      });
+      this.i += 4 + n;
+      return true;
+    }
+
     // GS k m n d...
     if (this.i + 3 >= this.data.length) return false;
     const n = this.data[this.i + 3]!;
@@ -322,44 +331,113 @@ class EscPosParser {
     return true;
   }
 
+  private parseEscStarRun(): boolean {
+    const bands: { mode: number; width: number; height: number; data: Uint8Array }[] = [];
+
+    while (
+      this.i + 1 < this.data.length &&
+      this.data[this.i] === 0x1b &&
+      this.data[this.i + 1] === 0x2a
+    ) {
+      if (this.i + 5 > this.data.length) break;
+      const mode = this.data[this.i + 2]!;
+      const width = this.data[this.i + 3]! + this.data[this.i + 4]! * 256;
+      const bytesPerCol = mode === 32 || mode === 33 ? 3 : 1;
+      const height = mode === 32 || mode === 33 ? 24 : 8;
+      const dataStart = this.i + 5;
+      const dataEnd = dataStart + width * bytesPerCol;
+      if (dataEnd > this.data.length) break;
+
+      bands.push({
+        mode,
+        width,
+        height,
+        data: this.data.slice(dataStart, dataEnd),
+      });
+      this.i = dataEnd;
+      if (this.data[this.i] === 0x0a) this.i += 1;
+    }
+
+    if (bands.length === 0) return false;
+
+    const width = Math.max(...bands.map((b) => b.width));
+    const totalHeight = bands.reduce((sum, b) => sum + b.height, 0);
+
+    if (bands.length === 1) {
+      const band = bands[0]!;
+      this.commands.push({
+        kind: "bitImage",
+        mode: band.mode,
+        width: band.width,
+        height: band.height,
+        data: band.data,
+      });
+    } else {
+      this.commands.push({ kind: "bitImageRun", width, totalHeight, bands });
+    }
+    return true;
+  }
+
   private parseGsQr(): boolean {
-    // GS ( k pL pH cn fn [params]
-    if (this.i + 5 >= this.data.length) return false;
+    if (this.i + 6 >= this.data.length) return false;
     const pL = this.data[this.i + 3]!;
     const pH = this.data[this.i + 4]!;
     const plen = pL + pH * 256;
-    const fn = this.data[this.i + 6];
-    if (fn === undefined) return false;
+    const end = this.i + 5 + plen;
+    if (end > this.data.length) return false;
 
-    const chunkEnd = this.i + 5 + plen;
-    if (chunkEnd > this.data.length) return false;
+    const cn = this.data[this.i + 5]!;
+    const fn = this.data[this.i + 6]!;
 
-    if (fn === 0x31 || fn === 49) {
-      // store QR data: cn fn m n data
-      const param = this.data.slice(this.i + 7, chunkEnd);
-      const storeIndex = param[2] ?? 0;
-      if (storeIndex === 0x31 || storeIndex === 49) {
-        const len = param[0]! + (param[1]! << 8);
-        const qrData = new TextDecoder().decode(param.slice(4, 4 + len));
-        this._qrData = qrData;
-      }
+    if (cn !== 0x31) {
+      this.i = end;
+      return true;
     }
-    if (fn === 0x32 || fn === 50) {
-      const size = this.data[this.i + 7] ?? 4;
+
+    if (fn === 0x41 && plen >= 3) {
+      this.i = end;
+      return true;
+    }
+
+    if (fn === 0x43 && plen >= 3) {
+      this._qrSize = this.data[this.i + 7] ?? 4;
+      this.i = end;
+      return true;
+    }
+
+    if (fn === 0x45 && plen >= 3) {
+      const ec = this.data[this.i + 7] ?? 0x31;
+      this._qrEcLevel = ec === 0x30 ? "L" : ec === 0x31 ? "M" : ec === 0x32 ? "Q" : "H";
+      this.i = end;
+      return true;
+    }
+
+    if (fn === 0x50 && plen >= 4) {
+      const storeLen = plen - 3;
+      this._qrData = new TextDecoder("utf-8").decode(this.data.slice(this.i + 8, this.i + 8 + storeLen));
+      this.i = end;
+      return true;
+    }
+
+    if (fn === 0x51) {
       this.commands.push({
         kind: "qrcode",
-        data: this._qrData ?? "",
+        data: this._qrData,
         model: 2,
-        size,
-        ecLevel: "M",
+        size: this._qrSize,
+        ecLevel: this._qrEcLevel,
       });
+      this.i = end;
+      return true;
     }
 
-    this.i = chunkEnd + 1;
+    this.i = end;
     return true;
   }
 
   private _qrData = "";
+  private _qrSize = 4;
+  private _qrEcLevel = "M";
 
   private parseGsGraphics(): boolean {
     // GS ( L pL pH m fn — simplified: fn=112 store raster

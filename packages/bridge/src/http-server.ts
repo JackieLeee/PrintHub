@@ -66,6 +66,47 @@ export function startHttpServer(options: HttpServerOptions): Server {
       return;
     }
 
+    if (req.method === "POST" && url.pathname === "/print/raw") {
+      try {
+        const ct = req.headers["content-type"] ?? "";
+        let payload: Buffer;
+
+        if (ct.includes("application/json")) {
+          const raw = await readBody(req);
+          const json = JSON.parse(raw.toString("utf8")) as {
+            dataBase64?: string;
+            dataHex?: string;
+          };
+          if (json.dataBase64) {
+            payload = Buffer.from(json.dataBase64.replace(/\s/g, ""), "base64");
+          } else if (json.dataHex) {
+            const cleaned = json.dataHex.replace(/[^0-9a-fA-F]/g, "");
+            if (cleaned.length % 2 !== 0) {
+              sendJson(res, 400, { error: "hex input has odd length" });
+              return;
+            }
+            payload = Buffer.from(cleaned, "hex");
+          } else {
+            sendJson(res, 400, { error: "missing dataBase64 or dataHex" });
+            return;
+          }
+        } else {
+          payload = await readBody(req);
+        }
+
+        if (payload.length === 0) {
+          sendJson(res, 400, { error: "empty body" });
+          return;
+        }
+
+        const job = bridge.ingestRaw(payload, req.socket.remoteAddress?.replace("::ffff:", "") ?? "http");
+        sendJson(res, 200, { ok: true, jobId: job.id, byteLength: job.byteLength, protocol: job.protocol });
+      } catch (err) {
+        sendJson(res, 500, { error: err instanceof Error ? err.message : "print failed" });
+      }
+      return;
+    }
+
     if (req.method === "POST" && url.pathname === "/print/image") {
       try {
         const protocol = (url.searchParams.get("protocol") ?? "escpos") as "escpos" | "tspl";

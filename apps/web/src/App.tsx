@@ -2,13 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { HubInfo, HubStatus, PrintJobMeta } from "@virt-printer/shared";
 import { hubIdFromStatus, hubInfoFromStatus } from "@virt-printer/shared";
 import { RelayClient } from "@virt-printer/relay-client";
-import { parseEscPos, isMeaningfulPrintJob } from "@virt-printer/escpos";
+import { isMeaningfulPrintJob } from "@virt-printer/escpos";
 import { parseTspl } from "@virt-printer/tspl";
-import { renderEscPosToCanvas, renderTsplToCanvas } from "@virt-printer/renderer";
+import { renderEscPosPreview, renderTsplToCanvas } from "@virt-printer/renderer";
 import { NetworkPanel } from "./components/NetworkPanel";
 import { PrintHistory } from "./components/PrintHistory";
 import { PreviewPanel } from "./components/PreviewPanel";
 import { HubSelector } from "./components/HubSelector";
+import { RawPrintPanel } from "./components/RawPrintPanel";
 import { discoverHubs, hubFromWsUrl } from "./lib/discovery";
 import {
   adaptHubForClient,
@@ -180,14 +181,47 @@ export function App() {
     [visibleJobs, selectedId],
   );
 
-  const preview = useMemo(() => {
-    if (!selectedJob) return { canvas: null, warnings: [] as string[] };
+  const [preview, setPreview] = useState<{
+    imageDataUrl: string | null;
+    paperWidth: number;
+    canvas: HTMLCanvasElement | null;
+    warnings: string[];
+  }>({
+    imageDataUrl: null,
+    paperWidth: 384,
+    canvas: null,
+    warnings: [],
+  });
+
+  useEffect(() => {
+    if (!selectedJob) {
+      setPreview({ imageDataUrl: null, paperWidth: 384, canvas: null, warnings: [] });
+      return;
+    }
     if (selectedJob.protocol === "tspl") {
       const parsed = parseTspl(selectedJob.payload);
-      return { canvas: renderTsplToCanvas(parsed.commands), warnings: parsed.warnings };
+      setPreview({
+        imageDataUrl: null,
+        paperWidth: 384,
+        canvas: renderTsplToCanvas(parsed.commands),
+        warnings: parsed.warnings,
+      });
+      return;
     }
-    const parsed = parseEscPos(selectedJob.payload);
-    return { canvas: renderEscPosToCanvas(parsed.commands), warnings: parsed.warnings };
+    let cancelled = false;
+    void renderEscPosPreview(selectedJob.payload).then((result) => {
+      if (!cancelled) {
+        setPreview({
+          imageDataUrl: result.imageDataUrl,
+          paperWidth: result.paperWidth,
+          canvas: null,
+          warnings: result.warnings,
+        });
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [selectedJob]);
 
   const currentHub = hubs.find((h) => h.id === (selectedHubId ?? activeHubId));
@@ -235,9 +269,22 @@ export function App() {
 
         <section className="panel preview-panel">
           <h2>预览</h2>
-          <PreviewPanel job={selectedJob} canvas={preview.canvas} warnings={preview.warnings} />
+          <PreviewPanel
+            job={selectedJob}
+            imageDataUrl={preview.imageDataUrl}
+            paperWidth={preview.paperWidth}
+            canvas={preview.canvas}
+            warnings={preview.warnings}
+          />
         </section>
       </div>
+
+      <details className="debug-section">
+        <summary>调试打印 · File / Hex / Base64</summary>
+        <div className="panel debug-panel">
+          <RawPrintPanel status={status} />
+        </div>
+      </details>
     </div>
   );
 }

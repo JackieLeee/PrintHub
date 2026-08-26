@@ -1,69 +1,56 @@
-/** Simplified CODE39-style bars for preview (not for production scanning). */
+/** QR layout/draw size aligned with EscPosInspector placeholder. */
+export function qrPixelSize(qrModuleSize: number): number {
+  const modules = 21 + (qrModuleSize - 1) * 4;
+  const modulePx = Math.max(3, Math.floor(120 / modules));
+  return modules * modulePx;
+}
+
+/** Simplified barcode placeholder (EscPosInspector-style wide stripe block). */
 export function drawBarcodePreview(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
-  maxWidth: number,
-  height: number,
+  barWidth: number,
   data: string,
-  hri: "none" | "above" | "below" | "both",
   color = "#111111",
 ): number {
-  const quiet = 8;
-  const bars: number[] = [];
-  for (let i = 0; i < data.length; i++) {
-    const code = data.charCodeAt(i);
-    bars.push(1, 1, code % 2 === 0 ? 2 : 1, 1, 2, code % 3 === 0 ? 2 : 1);
-  }
-  const totalUnits = bars.reduce((a, b) => a + b, 0);
-  const unit = Math.max(1, Math.floor((maxWidth - quiet * 2) / totalUnits));
-
-  let cx = x + quiet;
+  const height = 48;
   ctx.fillStyle = color;
+  ctx.fillRect(x, y, barWidth, height);
 
-  for (let i = 0; i < bars.length; i++) {
-    const w = bars[i]! * unit;
-    if (i % 2 === 0) ctx.fillRect(cx, y, w, height);
-    cx += w;
+  let stripeX = x + 4;
+  while (stripeX < x + barWidth - 4) {
+    const stripeW = 2 + (stripeX % 5);
+    ctx.fillStyle = "#f8f8f8";
+    ctx.fillRect(stripeX, y + 4, stripeW, height - 8);
+    stripeX += stripeW + 2;
   }
 
-  const usedHeight = height + (hri === "none" ? 0 : 16);
-  if (hri === "above" || hri === "both") {
-    ctx.font = "11px monospace";
-    ctx.textAlign = "center";
-    ctx.fillText(data, x + maxWidth / 2, y - 4);
-  }
-  if (hri === "below" || hri === "both") {
-    ctx.font = "11px monospace";
-    ctx.textAlign = "center";
-    ctx.fillText(data, x + maxWidth / 2, y + height + 14);
-  }
+  ctx.fillStyle = "#222";
+  ctx.font = '11px "Courier New", Courier, monospace';
+  ctx.textAlign = "center";
+  ctx.fillText(data, x + barWidth / 2, y + height + 14);
+  ctx.textAlign = "left";
 
-  return usedHeight + (hri === "both" ? 16 : 0);
+  return height + 22;
 }
 
-/** Deterministic QR-like grid preview from payload (visual only). */
+/** Deterministic QR-like grid preview (EscPosInspector-style, not scannable). */
 export function drawQrPreview(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
-  size: number,
+  qrModuleSize: number,
   data: string,
   color = "#111111",
 ): number {
-  const modules = 21 + (Math.min(6, Math.floor(data.length / 16)) % 4) * 4;
-  const cell = Math.max(2, Math.floor(size / modules));
-  const dim = modules * cell;
+  const modules = 21 + (qrModuleSize - 1) * 4;
+  const modulePx = Math.max(3, Math.floor(120 / modules));
+  const qrSize = modules * modulePx;
 
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(x, y, dim, dim);
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(x, y, qrSize, qrSize);
   ctx.fillStyle = color;
-
-  let hash = 2166136261;
-  for (let i = 0; i < data.length; i++) {
-    hash ^= data.charCodeAt(i);
-    hash = Math.imul(hash, 16777619);
-  }
 
   for (let row = 0; row < modules; row++) {
     for (let col = 0; col < modules; col++) {
@@ -71,21 +58,12 @@ export function drawQrPreview(
         (row < 7 && col < 7) ||
         (row < 7 && col >= modules - 7) ||
         (row >= modules - 7 && col < 7);
-      const finderOn =
-        inFinder &&
-        (row === 0 ||
-          row === 6 ||
-          col === 0 ||
-          col === 6 ||
-          (row >= 2 && row <= 4 && col >= 2 && col <= 4) ||
-          (row < 7 && col >= modules - 7 && (col === modules - 7 || col === modules - 1 || (row >= 2 && row <= 4 && col >= modules - 5 && col <= modules - 3))) ||
-          (row >= modules - 7 && col < 7 && (row === modules - 7 || row === modules - 1 || (row >= modules - 5 && row <= modules - 3 && col >= 2 && col <= 4))));
-
-      hash = Math.imul(hash ^ (row * modules + col), 2246822519);
-      const on = inFinder ? finderOn : (hash & 1) === 1;
-      if (on) ctx.fillRect(x + col * cell, y + row * cell, cell, cell);
+      const hash = (row * 17 + col * 31 + data.length) % 5;
+      if (inFinder || hash > 1) {
+        ctx.fillRect(x + col * modulePx, y + row * modulePx, modulePx, modulePx);
+      }
     }
   }
 
-  return dim + 8;
+  return qrSize + 8;
 }

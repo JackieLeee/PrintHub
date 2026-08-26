@@ -53,3 +53,34 @@ export function drawBitImageColumn(
 
   return height * scale;
 }
+
+/** ESC * column-format stripes stacked vertically (MSB = top dot). */
+export function drawEscStarStripes(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  bands: { height: number; data: Uint8Array }[],
+  scale: number,
+  color = "#111111",
+): number {
+  ctx.fillStyle = color;
+  let yOffset = 0;
+
+  for (const band of bands) {
+    const bytesPerCol = band.height / 8;
+    for (let col = 0; col < width; col++) {
+      for (let dot = 0; dot < band.height; dot++) {
+        const byteIndex = col * bytesPerCol + (dot >> 3);
+        const bit = 7 - (dot & 7);
+        const byte = band.data[byteIndex] ?? 0;
+        if ((byte & (1 << bit)) !== 0) {
+          ctx.fillRect(x + col * scale, y + (yOffset + dot) * scale, scale, scale);
+        }
+      }
+    }
+    yOffset += band.height;
+  }
+
+  return yOffset * scale;
+}

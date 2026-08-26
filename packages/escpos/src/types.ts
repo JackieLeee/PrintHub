@@ -30,6 +30,12 @@ export type EscPosCommand =
   | { kind: "qrcode"; data: string; model: number; size: number; ecLevel: string }
   | { kind: "raster"; widthBytes: number; height: number; mode: number; data: Uint8Array }
   | { kind: "bitImage"; mode: number; width: number; height: number; data: Uint8Array }
+  | {
+      kind: "bitImageRun";
+      width: number;
+      totalHeight: number;
+      bands: { mode: number; height: number; data: Uint8Array }[];
+    }
   | { kind: "raw"; bytes: Uint8Array };
 
 export type BarcodeSymbology =

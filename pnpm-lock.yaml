@@ -57,9 +57,6 @@ importers:
 
   packages/bridge:
     dependencies:
-      '@virt-printer/escpos':
-        specifier: workspace:*
-        version: link:../escpos
       '@virt-printer/shared':
         specifier: workspace:*
         version: link:../shared

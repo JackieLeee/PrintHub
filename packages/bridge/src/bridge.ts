@@ -125,6 +125,20 @@ export class VirtPrinterBridge {
     return this.emitJob(connection, payload, "image");
   }
 
+  ingestRaw(payload: Buffer, sourceIp: string): PrintJobMeta {
+    const protocol = detectProtocol(payload);
+    const connection: DeviceConnection = {
+      sessionId: `http-${randomUUID()}`,
+      ip: sourceIp,
+      port: 0,
+      protocol,
+      connectedAt: Date.now(),
+      lastActivityAt: Date.now(),
+      label: `HTTP ${sourceIp}`,
+    };
+    return this.emitJob(connection, payload, "raw");
+  }
+
   private startWsPing(): void {
     this.pingTimer = setInterval(() => {
       for (const { ws } of this.wsClients.values()) {

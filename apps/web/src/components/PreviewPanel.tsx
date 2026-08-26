@@ -3,15 +3,25 @@ import type { StoredJob } from "../App";
 
 interface Props {
   job: StoredJob | null;
-  canvas: HTMLCanvasElement | null;
+  /** ESC/POS receipt PNG (EscPosInspector-style). */
+  imageDataUrl?: string | null;
+  paperWidth?: number;
+  /** TSPL label canvas fallback. */
+  canvas?: HTMLCanvasElement | null;
   warnings?: string[];
 }
 
-export function PreviewPanel({ job, canvas, warnings = [] }: Props) {
-  const mountRef = useRef<HTMLDivElement>(null);
+export function PreviewPanel({
+  job,
+  imageDataUrl = null,
+  paperWidth,
+  canvas = null,
+  warnings = [],
+}: Props) {
+  const tsplMountRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const mount = mountRef.current;
+    const mount = tsplMountRef.current;
     if (!mount) return;
     mount.innerHTML = "";
     if (canvas) {
@@ -30,6 +40,9 @@ export function PreviewPanel({ job, canvas, warnings = [] }: Props) {
         <span className={`tag ${job.protocol}`}>{job.protocol.toUpperCase()}</span>
         <span>{job.sourceIp}</span>
         <span>{job.byteLength} bytes</span>
+        {paperWidth != null && job.protocol === "escpos" && (
+          <span className="preview-paper">{paperWidth}px paper</span>
+        )}
       </div>
       {warnings.length > 0 && (
         <details className="parse-warnings">
@@ -41,7 +54,17 @@ export function PreviewPanel({ job, canvas, warnings = [] }: Props) {
           </ul>
         </details>
       )}
-      <div ref={mountRef} className="preview-mount" />
+      <div className="preview-mount">
+        {imageDataUrl ? (
+          <div className="receipt-shell">
+            <img src={imageDataUrl} alt="Receipt preview" className="receipt-image" />
+          </div>
+        ) : canvas ? (
+          <div ref={tsplMountRef} className="tspl-preview-mount" />
+        ) : (
+          <div className="preview-loading">渲染中…</div>
+        )}
+      </div>
     </div>
   );
 }
