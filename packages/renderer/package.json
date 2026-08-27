@@ -9,9 +9,11 @@
   },
   "dependencies": {
     "@virt-printer/escpos": "workspace:*",
-    "@virt-printer/tspl": "workspace:*"
+    "@virt-printer/tspl": "workspace:*",
+    "qrcode": "^1.5.4"
   },
   "devDependencies": {
+    "@types/qrcode": "^1.5.6",
     "typescript": "^5.8.3"
   }
 }

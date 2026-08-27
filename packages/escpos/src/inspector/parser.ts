@@ -27,7 +27,8 @@ import type {
   TextCommand,
   UnsupportedCommand,
 } from "./types.js";
-import { decodeTextBytes, codePageName } from "../encoding.js";
+import { decodeTextBytes, codePageName, hriFromCode, symbologyFromGsK } from "../encoding.js";
+import { inferPaperWidthFromCommands } from "../paper-width.js";
 
 // we keep track of the current printer state while we walk the bytes.
 // escpos is stateful, so a command like "bold on" stays active untill
@@ -37,9 +38,15 @@ interface ParserState {
   charHeight: number;
   bold: boolean;
   underline: boolean;
+  doubleStrike: boolean;
   alignment: "left" | "center" | "right";
   utf8: boolean;
   codePage: string;
+  chineseMode: boolean;
+  cellWidthScale: number;
+  barcodeHeight: number;
+  barcodeWidth: number;
+  barcodeHri: BarcodeCommand["position"];
 }
 
 function makeId(index: number): string {
@@ -97,9 +104,15 @@ export function parseEscPosInspector(data: Uint8Array, paperWidth = 384): ParseR
     charHeight: 1,
     bold: false,
     underline: false,
+    doubleStrike: false,
     alignment: "left",
     utf8: false,
     codePage: "cp936",
+    chineseMode: false,
+    cellWidthScale: 1,
+    barcodeHeight: 80,
+    barcodeWidth: 2,
+    barcodeHri: "below",
   };
 
   const push = (command: ParsedCommand) => {
@@ -137,9 +150,15 @@ export function parseEscPosInspector(data: Uint8Array, paperWidth = 384): ParseR
         state.charHeight = 1;
         state.bold = false;
         state.underline = false;
+        state.doubleStrike = false;
         state.alignment = "left";
         state.utf8 = false;
         state.codePage = "cp936";
+        state.chineseMode = false;
+        state.cellWidthScale = 1;
+        state.barcodeHeight = 80;
+        state.barcodeWidth = 2;
+        state.barcodeHri = "below";
         index += 2;
         push({
           ...baseCommand(
@@ -179,7 +198,9 @@ export function parseEscPosInspector(data: Uint8Array, paperWidth = 384): ParseR
         const bold = (value & 0x08) !== 0;
         const doubleHeight = (value & 0x10) !== 0;
         const doubleWidth = (value & 0x20) !== 0;
+        const underline = (value & 0x80) !== 0;
         state.bold = bold;
+        state.underline = underline;
         state.charWidth = doubleWidth ? 2 : 1;
         state.charHeight = doubleHeight ? 2 : 1;
         index += 3;
@@ -188,7 +209,7 @@ export function parseEscPosInspector(data: Uint8Array, paperWidth = 384): ParseR
             commandIndex,
             "font",
             "Font / Print Mode",
-            `ESC ! ; bold=${bold}, width×${state.charWidth}, height×${state.charHeight}`,
+            `ESC ! ; bold=${bold}, underline=${underline}, width×${state.charWidth}, height×${state.charHeight}`,
             start,
             index,
             data,
@@ -197,13 +218,14 @@ export function parseEscPosInspector(data: Uint8Array, paperWidth = 384): ParseR
           width: state.charWidth,
           height: state.charHeight,
           bold,
-          underline: state.underline,
+          underline,
+          cellWidthScale: state.cellWidthScale,
         } as FontCommand);
         continue;
       }
 
       if (next === 0x45 && index + 2 < data.length) {
-        state.bold = data[index + 2]! === 1;
+        state.bold = data[index + 2]! !== 0;
         index += 3;
         push({
           ...baseCommand(
@@ -255,11 +277,46 @@ export function parseEscPosInspector(data: Uint8Array, paperWidth = 384): ParseR
             lines > 0,
           ),
           lines,
+          unit: "lines",
         } as FeedCommand);
         continue;
       }
 
-      // ESC 3 n sets the line spacing (in dots). the cashier app sends
+      if (next === 0x69) {
+        index += 2;
+        push({
+          ...baseCommand(
+            commandIndex,
+            "cut",
+            "Cut Paper",
+            "ESC i ; full cut",
+            start,
+            index,
+            data,
+          ),
+          mode: "full",
+        } as CutCommand);
+        continue;
+      }
+
+      if (next === 0x6d) {
+        index += 2;
+        push({
+          ...baseCommand(
+            commandIndex,
+            "cut",
+            "Cut Paper",
+            "ESC m ; partial cut",
+            start,
+            index,
+            data,
+          ),
+          mode: "partial",
+        } as CutCommand);
+        continue;
+      }
+
+      // ESC 3 n sets the line spacing (in dots).
       // ESC 3 24 before the image so the 24-dot stripes butt together with
       // no gap. it only changes feed distance, so there is nothing to draw.
       if (next === 0x33 && index + 2 < data.length) {
@@ -324,23 +381,39 @@ export function parseEscPosInspector(data: Uint8Array, paperWidth = 384): ParseR
           const bytesPerColumn = mode === 32 || mode === 33 ? 3 : 1;
           const heightDots = mode === 32 || mode === 33 ? 24 : 8;
           const dataStart = cursor + 5;
-          const dataEnd = dataStart + width * bytesPerColumn;
+          const expectedLen = width * bytesPerColumn;
+          const scanUntil = Math.min(dataStart + expectedLen, data.length);
 
-          if (dataEnd > data.length) {
+          let stripeEnd = dataStart;
+          while (stripeEnd < scanUntil && data[stripeEnd] !== 0x0a) {
+            stripeEnd += 1;
+          }
+
+          const copiedLen = stripeEnd - dataStart;
+          if (copiedLen === 0) {
             truncated = true;
             break;
           }
 
+          const stripeBytes = new Uint8Array(expectedLen);
+          stripeBytes.set(data.subarray(dataStart, stripeEnd));
           bands.push({
             mode,
             width,
             heightDots,
-            data: data.subarray(dataStart, dataEnd),
+            data: stripeBytes,
           });
-          cursor = dataEnd;
-          // each stripe ends with LF, which is what actually prints it. it is
-          // part of the image job, not a content line feed, so absorb it.
-          if (data[cursor] === 0x0a) cursor += 1;
+
+          if (stripeEnd < data.length && data[stripeEnd] === 0x0a) {
+            cursor = stripeEnd + 1;
+          } else if (copiedLen < expectedLen) {
+            truncated = true;
+            break;
+          } else {
+            cursor = stripeEnd;
+            truncated = true;
+            break;
+          }
         }
 
         if (bands.length === 0) {
@@ -360,6 +433,10 @@ export function parseEscPosInspector(data: Uint8Array, paperWidth = 384): ParseR
         }
 
         const decoded = decodeEscStarStripes(bands);
+        if (decoded.height <= 0) {
+          index = cursor;
+          continue;
+        }
         detectedWidth = Math.max(
           detectedWidth,
           estimatePaperWidthFromImage(decoded.width),
@@ -404,6 +481,7 @@ export function parseEscPosInspector(data: Uint8Array, paperWidth = 384): ParseR
             units > 0,
           ),
           lines: units,
+          unit: "dots",
         } as FeedCommand);
         continue;
       }
@@ -413,6 +491,68 @@ export function parseEscPosInspector(data: Uint8Array, paperWidth = 384): ParseR
         state.codePage = codePageName(code);
         state.utf8 = code === 255;
         index += 3;
+        continue;
+      }
+
+      if (next === 0x4d && index + 2 < data.length) {
+        const font = data[index + 2]!;
+        state.cellWidthScale = font === 1 || font === 49 ? 9 / 12 : 1;
+        index += 3;
+        push({
+          ...baseCommand(
+            commandIndex,
+            "font",
+            "Select Font",
+            `ESC M ; font ${font === 0 || font === 48 ? "A" : font === 1 || font === 49 ? "B" : String(font)}`,
+            start,
+            index,
+            data,
+            false,
+          ),
+          width: state.charWidth,
+          height: state.charHeight,
+          bold: state.bold,
+          underline: state.underline,
+          cellWidthScale: state.cellWidthScale,
+        } as FontCommand);
+        continue;
+      }
+
+      if (next === 0x47) {
+        state.doubleStrike = true;
+        index += 2;
+        push({
+          ...baseCommand(
+            commandIndex,
+            "style",
+            "Double Strike",
+            "ESC G ; double-strike on",
+            start,
+            index,
+            data,
+            false,
+          ),
+          doubleStrike: true,
+        } as StyleCommand);
+        continue;
+      }
+
+      if (next === 0x48) {
+        state.doubleStrike = false;
+        index += 2;
+        push({
+          ...baseCommand(
+            commandIndex,
+            "style",
+            "Double Strike",
+            "ESC H ; double-strike off",
+            start,
+            index,
+            data,
+            false,
+          ),
+          doubleStrike: false,
+        } as StyleCommand);
         continue;
       }
 
@@ -476,7 +616,26 @@ export function parseEscPosInspector(data: Uint8Array, paperWidth = 384): ParseR
           height,
           bold: state.bold,
           underline: state.underline,
+          cellWidthScale: state.cellWidthScale,
         } as FontCommand);
+        continue;
+      }
+
+      if (next === 0x68 && index + 2 < data.length) {
+        state.barcodeHeight = data[index + 2]!;
+        index += 3;
+        continue;
+      }
+
+      if (next === 0x77 && index + 2 < data.length) {
+        state.barcodeWidth = data[index + 2]!;
+        index += 3;
+        continue;
+      }
+
+      if (next === 0x48 && index + 2 < data.length) {
+        state.barcodeHri = hriFromCode(data[index + 2]!);
+        index += 3;
         continue;
       }
 
@@ -559,6 +718,10 @@ export function parseEscPosInspector(data: Uint8Array, paperWidth = 384): ParseR
 
         const imageData = data.subarray(index + 8, end);
         const decoded = decodeGsV0Image(mode, widthPx, height, imageData);
+        if (decoded.height <= 0) {
+          index = end;
+          continue;
+        }
         detectedWidth = Math.max(
           detectedWidth,
           estimatePaperWidthFromImage(decoded.width),
@@ -582,6 +745,31 @@ export function parseEscPosInspector(data: Uint8Array, paperWidth = 384): ParseR
       if (next === 0x6b) {
         if (index + 2 >= data.length) break;
         const type = data[index + 2]!;
+
+        if (type <= 6) {
+          let j = index + 3;
+          while (j < data.length && data[j] !== 0) j += 1;
+          const payload = data.subarray(index + 3, j);
+          const barcodeData = new TextDecoder("ascii").decode(payload);
+          index = j + 1;
+          push({
+            ...baseCommand(
+              commandIndex,
+              "barcode",
+              "Barcode",
+              `${symbologyFromGsK(type)} ; ${barcodeData}`,
+              start,
+              index,
+              data,
+            ),
+            symbology: symbologyFromGsK(type),
+            data: barcodeData,
+            height: state.barcodeHeight,
+            width: state.barcodeWidth,
+            position: state.barcodeHri,
+          } as BarcodeCommand);
+          continue;
+        }
 
         if (type >= 0x41 && type <= 0x49) {
           if (index + 3 >= data.length) break;
@@ -622,9 +810,9 @@ export function parseEscPosInspector(data: Uint8Array, paperWidth = 384): ParseR
             ),
             symbology: BARCODE_TYPES[type] ?? `Type 0x${type.toString(16)}`,
             data: barcodeData,
-            height: 0,
-            width: 2,
-            position: "below",
+            height: state.barcodeHeight,
+            width: state.barcodeWidth,
+            position: state.barcodeHri,
           } as BarcodeCommand);
           continue;
         }
@@ -837,6 +1025,10 @@ export function parseEscPosInspector(data: Uint8Array, paperWidth = 384): ParseR
           if (imageEnd <= end) {
             const imageData = data.subarray(imageStart, imageEnd);
             const decoded = decodeGsV0Image(0, widthPx, height, imageData);
+            if (decoded.height <= 0) {
+              index = end;
+              continue;
+            }
             detectedWidth = Math.max(
               detectedWidth,
               estimatePaperWidthFromImage(decoded.width),
@@ -933,12 +1125,16 @@ export function parseEscPosInspector(data: Uint8Array, paperWidth = 384): ParseR
       }
       const next = data[index + 1]!;
       if (next === 0x26) {
-        state.utf8 = true;
+        state.utf8 = false;
+        state.codePage = "gbk";
+        state.chineseMode = true;
         index += 2;
         continue;
       }
       if (next === 0x2e) {
         state.utf8 = false;
+        state.codePage = "cp437";
+        state.chineseMode = false;
         index += 2;
         continue;
       }
@@ -958,7 +1154,7 @@ export function parseEscPosInspector(data: Uint8Array, paperWidth = 384): ParseR
         end += 1;
       }
       const textBytes = data.subarray(index, end);
-      const text = decodeTextBytes(textBytes, state.utf8, state.codePage);
+      const text = decodeTextBytes(textBytes, state.utf8, state.codePage, state.chineseMode);
       index = end;
       push({
         ...baseCommand(
@@ -1000,7 +1196,7 @@ export function parseEscPosInspector(data: Uint8Array, paperWidth = 384): ParseR
   return {
     commands,
     warnings,
-    paperWidth: detectedWidth,
+    paperWidth: inferPaperWidthFromCommands(commands, detectedWidth),
   };
 }
 

@@ -72,6 +72,15 @@ export function startHttpServer(options: HttpServerOptions): Server {
       return;
     }
 
+    if (req.method === "GET" && url.pathname === "/" && !webRoot) {
+      sendJson(res, 503, {
+        error: "web ui not built",
+        hint: "Run from repo root: pnpm install && pnpm start",
+        api: ["/health", "/status", "/print/raw"],
+      });
+      return;
+    }
+
     if (req.method === "POST" && url.pathname === "/print/raw") {
       try {
         const ct = req.headers["content-type"] ?? "";

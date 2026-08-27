@@ -1,5 +1,7 @@
 import { parseEscPosInspector } from "@virt-printer/escpos";
 import { renderReceipt, renderReceiptToCanvas } from "./canvas-renderer.js";
+import { receiptFontFamily } from "./receipt-fonts.js";
+import { normalizeReceiptLayout } from "./receipt-layout.js";
 import type { RenderOptions } from "./types.js";
 
 const DEFAULT_RECEIPT_WIDTH = 384;
@@ -10,6 +12,13 @@ export interface EscPosPreviewResult {
   warnings: string[];
 }
 
+/** @deprecated Use EscPosPreviewResult; compare URLs are always null. */
+export interface EscPosComparePreviewResult extends EscPosPreviewResult {
+  textImageUrl: null;
+  rasterImageUrl: null;
+  hasRaster: boolean;
+}
+
 /** Match EscPosInspector: render to PNG data URL for `<img>` display. */
 export async function renderEscPosPreview(
   payload: Uint8Array,
@@ -17,8 +26,33 @@ export async function renderEscPosPreview(
 ): Promise<EscPosPreviewResult> {
   const widthPx = options.widthPx ?? DEFAULT_RECEIPT_WIDTH;
   const { commands, paperWidth, warnings } = parseEscPosInspector(payload, widthPx);
-  const result = await renderReceipt(commands, paperWidth);
-  return { imageDataUrl: result.imageDataUrl, paperWidth, warnings };
+  const fontFamily = receiptFontFamily(options.receiptFontId);
+  const layout = normalizeReceiptLayout(options.receiptLayout);
+  const result = await renderReceipt(commands, paperWidth, { fontFamily, layout });
+  return {
+    imageDataUrl: result.imageDataUrl,
+    paperWidth,
+    warnings,
+  };
+}
+
+/** @deprecated Side-by-side compare removed; returns the same unified preview. */
+export async function renderEscPosComparePreview(
+  payload: Uint8Array,
+  options: RenderOptions = {},
+): Promise<EscPosComparePreviewResult> {
+  const preview = await renderEscPosPreview(payload, options);
+  const widthPx = options.widthPx ?? DEFAULT_RECEIPT_WIDTH;
+  const { commands } = parseEscPosInspector(payload, widthPx);
+  const hasRaster = commands.some(
+    (c) => c.category === "image" || c.category === "rasterImage",
+  );
+  return {
+    ...preview,
+    textImageUrl: null,
+    rasterImageUrl: null,
+    hasRaster,
+  };
 }
 
 export async function renderEscPosToCanvas(
@@ -27,5 +61,7 @@ export async function renderEscPosToCanvas(
 ): Promise<HTMLCanvasElement> {
   const widthPx = options.widthPx ?? DEFAULT_RECEIPT_WIDTH;
   const { commands, paperWidth } = parseEscPosInspector(payload, widthPx);
-  return renderReceiptToCanvas(commands, paperWidth);
+  const fontFamily = receiptFontFamily(options.receiptFontId);
+  const layout = normalizeReceiptLayout(options.receiptLayout);
+  return renderReceiptToCanvas(commands, paperWidth, { fontFamily, layout });
 }

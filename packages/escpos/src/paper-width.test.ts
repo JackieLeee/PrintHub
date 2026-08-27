@@ -1,0 +1,59 @@
+import { strictEqual } from "node:assert";
+import { describe, it } from "node:test";
+import { decodeTextBytes } from "./encoding.js";
+import { parseEscPosInspector } from "./inspector/parser.js";
+import {
+  inferPaperWidthFromCommands,
+  paperWidthFromMaxColumns,
+  PAPER_WIDTH_58MM,
+  PAPER_WIDTH_80MM,
+} from "./paper-width.js";
+
+const B64_80_TEXT =
+  "G0AbYQAbRwEdIQAbdAAcJhtNACAgICAgICAgICAgICAgICAgILTy06Gy4srUICAgICAgICAgICAgICAgICAgChtAG2EAHSEAG3QAHCYbTQDXwMyoOjEyQyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAjIDAwMDEKG0AbYQAdIQAbdAAcJhtNAMDg0M0gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgzMPKswobQBthAB0hABt0ABwmG00AsbjXoiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgTm90IHNwaWN5ChtAG2EAHSEAG3QAHCYbTQAtLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0KG0AbYQAdIQAbdAAcJhtNAMP7s8YgICAgICAgICAgICAgICAgICDK/cG/ICAgICAgICAgICAgICAgICAg0KG8xgobQBthAB0hABt0ABwmG00ALS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tChtAG2EAHSEAG3QAHCYbTQBCZWVmIGFuZCBNdXNocm9vbSBCdXJnIDIgICAgICAgICAgICAgICAgMiwyMjQuNDQKG0AbYQAdIQAbdAAcJhtNAFR1cmtpc2ggKEJpZyktMS4yMzBrZwobQBthAB0hABt0ABwmG00AICAgIHRlc3Qgc3BlY2lhbCBkaXNjb3VudNXbv9sgICAgICAgICAgICAgLTEwLjAwChtAG2EAHSEAG3QAHCYbTQBCZWVmIGFuZCBNdXNocm9vbSBCdXJnIDIgICAgICAgICAgICAgICAgMiwyMjQuNDQKG0AbYQAdIQAbdAAcJhtNAFR1cmtpc2ggKEJpZyktMS4yMzBrZwobQBthAB0hABt0ABwmG00AICAgIHRlc3Qgc3BlY2lhbCBkaXNjb3VudNXbv9sgICAgICAgICAgICAgLTEwLjAwChtAG2EAHSEAG3QAHCYbTQBCZWVmIGFuZCBNdXNocm9vbSBCdXJnIDIgICAgICAgICAgICAgICAgMiwyMjQuNDQKG0AbYQAdIQAbdAAcJhtNAFR1cmtpc2ggKEJpZyktMS4yMzBrZwobQBthAB0hABt0ABwmG00AICAgIHRlc3Qgc3BlY2lhbCBkaXNjb3VudNXbv9sgICAgICAgICAgICAgLTEwLjAwChtAG2EAHSEAG3QAHCYbTQAtLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0KG0AbYQAdIQAbdAAcJhtNALLLxre98LbuICAgICAgICAgICAgICAgICAgICAgICAgICAgIDEsMjM0LDU2Ny44OQobQBthAB0hABt0ABwmG00Ay7AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAyLjAwChtAG2EAHSEAG3QAHCYbTQAgICDX3LzGICAgICAgICAgICAgICAgICAgICAgICAgICAgICAxLDIzNCw1NjcuODkKG0AbYQAdIQAbdAAcJhtNAC0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQobQBthAB0hABt0ABwmG00Atqm1pbHgusUgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAzMjQzNTQzNTQ2ChtAG2EAHSEAG3QAHCYbTQDAtNS0ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBXYWl0aWVyOlJpY2sKG0AbYQAdIQAbdAAcJhtNALaptaXKsbzkICAgICAgICAgICAgICAgICAgICAgICAgICAgIDEyLTIyICAyMjoyMgobQBthAB0hABt0ABwmG00Atqm1pcqxvOQgICAgICAgICAgICAgICAgICAgICAgICAgICAgMTItMjIgIDIyOjIyChtAG2EAHSEAG3QAHCYbTQAgChtAG2EAHSEAG3QAHCYbTQAgCg==";
+
+const B64_58_TEXT =
+  "G0AbYQAbRwEdIQAbdAAcJhtNACAgICAgICAgICAgILTy06Gy4srUICAgICAgICAgICAgChtAG2EAHSEAG3QAHCYbTQDXwMyoOjEyQyAgICAgICAgICAgICAgICAgICMgMDAwMQobQBthAB0hABt0ABwmG00AwODQzSAgICAgICAgICAgICAgICAgICAgICAgIMzDyrMKG0AbYQAdIQAbdAAcJhtNALG416IgICAgICAgICAgICAgICAgICAgTm90IHNwaWN5ChtAG2EAHSEAG3QAHCYbTQAtLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQobQBthAB0hABt0ABwmG00Aw/uzxiAgICAgICAgICAgICDK/cG/ICAgICAgINChvMYKG0AbYQAdIQAbdAAcJhtNAC0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tChtAG2EAHSEAG3QAHCYbTQBCZWVmIGFuZCBNdXNocm9vbSAyICAgICAyLDIyNC40NAobQBthAB0hABt0ABwmG00AQnVyZyBUdXJraXNoChtAG2EAHSEAG3QAHCYbTQAoQmlnKS0xLjIzMGtnChtAG2EAHSEAG3QAHCYbTQAgICAgdGVzdCBzcGVjaWFsICAgICAgICAgIC0xMC4wMAobQBthAB0hABt0ABwmG00AICAgIGRpc2NvdW501du/2wobQBthAB0hABt0ABwmG00AQmVlZiBhbmQgTXVzaHJvb20gMiAgICAgMiwyMjQuNDQKG0AbYQAdIQAbdAAcJhtNAEJ1cmcgVHVya2lzaAobQBthAB0hABt0ABwmG00AKEJpZyktMS4yMzBrZwobQBthAB0hABt0ABwmG00AICAgIHRlc3Qgc3BlY2lhbCAgICAgICAgICAtMTAuMDAKG0AbYQAdIQAbdAAcJhtNACAgICBkaXNjb3VudNXbv9sKG0AbYQAdIQAbdAAcJhtNAEJlZWYgYW5kIE11c2hyb29tIDIgICAgIDIsMjI0LjQ0ChtAG2EAHSEAG3QAHCYbTQBCdXJnIFR1cmtpc2gKG0AbYQAdIQAbdAAcJhtNAChCaWcpLTEuMjMwa2cKG0AbYQAdIQAbdAAcJhtNACAgICB0ZXN0IHNwZWNpYWwgICAgICAgICAgLTEwLjAwChtAG2EAHSEAG3QAHCYbTQAgICAgZGlzY291bnTV27/bChtAG2EAHSEAG3QAHCYbTQAtLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQobQBthAB0hABt0ABwmG00AssvGt73wtu4gICAgICAgICAgICAxLDIzNCw1NjcuODkKG0AbYQAdIQAbdAAcJhtNAMuwICAgICAgICAgICAgICAgICAgICAgICAgICAyLjAwChtAG2EAHSEAG3QAHCYbTQAgICDX3LzGICAgICAgICAgICAgIDEsMjM0LDU2Ny44OQobQBthAB0hABt0ABwmG00ALS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0KG0AbYQAdIQAbdAAcJhtNALaptaWx4LrFICAgICAgICAgICAgICAzMjQzNTQzNTQ2ChtAG2EAHSEAG3QAHCYbTQDAtNS0ICAgICAgICAgICAgICAgIFdhaXRpZXI6UmljawobQBthAB0hABt0ABwmG00Atqm1pcqxvOQgICAgICAgICAgICAxMi0yMiAgMjI6MjIKG0AbYQAdIQAbdAAcJhtNALaptaXKsbzkICAgICAgICAgICAgMTItMjIgIDIyOjIyChtAG2EAHSEAG3QAHCYbTQAgChtAG2EAHSEAG3QAHCYbTQAgCg==";
+
+describe("paper width + GBK", () => {
+  it("decodes 税 (0xCB 0xB0) in GBK mode", () => {
+    const text = decodeTextBytes(new Uint8Array([0xcb, 0xb0]), false, "gbk", true);
+    strictEqual(text, "税");
+  });
+
+  it("infers 576px for 80mm text receipt", () => {
+    const data = Uint8Array.from(atob(B64_80_TEXT), (c) => c.charCodeAt(0));
+    const { paperWidth } = parseEscPosInspector(data);
+    strictEqual(paperWidth, PAPER_WIDTH_80MM);
+  });
+
+  it("infers 384px for 58mm text receipt", () => {
+    const data = Uint8Array.from(atob(B64_58_TEXT), (c) => c.charCodeAt(0));
+    const { paperWidth } = parseEscPosInspector(data);
+    strictEqual(paperWidth, PAPER_WIDTH_58MM);
+  });
+
+  it("80mm receipt includes 税 line", () => {
+    const data = Uint8Array.from(atob(B64_80_TEXT), (c) => c.charCodeAt(0));
+    const { commands } = parseEscPosInspector(data);
+    const joined = commands
+      .filter((c) => c.category === "text")
+      .map((c) => (c as { text: string }).text)
+      .join("\n");
+    strictEqual(joined.includes("税"), true);
+    strictEqual(joined.includes("˰"), false);
+  });
+
+  it("uses 80mm when a text line exceeds 58mm column count", () => {
+    strictEqual(paperWidthFromMaxColumns(36), PAPER_WIDTH_80MM);
+    strictEqual(paperWidthFromMaxColumns(32), PAPER_WIDTH_58MM);
+  });
+
+  it("prefers text width over narrow inline QR raster", () => {
+    const paperWidth = inferPaperWidthFromCommands([
+      { category: "text", text: "Sample thermal receipt for debugging" },
+      { category: "image", width: 64 },
+    ]);
+    strictEqual(paperWidth, PAPER_WIDTH_80MM);
+  });
+});

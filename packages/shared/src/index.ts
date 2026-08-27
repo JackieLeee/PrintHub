@@ -126,4 +126,6 @@ export const JOB_CHUNK_THRESHOLD = 256 * 1024;
 export const JOB_CHUNK_SIZE = 64 * 1024;
 
 export const TCP_IDLE_TIMEOUT_MS = 120_000;
+/** Emit TCP print job after this idle gap (POS often keeps the socket open). */
+export const TCP_FLUSH_IDLE_MS = 400;
 export const WS_PING_INTERVAL_MS = 30_000;

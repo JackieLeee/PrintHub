@@ -3,9 +3,10 @@ import type { HubStatus, PrintJobMeta } from "@virt-printer/shared";
 import { DEFAULT_TCP_PORT, hubIdFromStatus } from "@virt-printer/shared";
 import { RelayClient } from "@virt-printer/relay-client";
 import { isMeaningfulPrintJob } from "@virt-printer/escpos";
-import { parseTspl } from "@virt-printer/tspl";
+import { parseTspl, formatLabelSize, isTsplPayload } from "@virt-printer/tspl";
 import { renderEscPosPreview, renderTsplToCanvas } from "@virt-printer/renderer";
 import { LanguageSwitcher } from "./components/LanguageSwitcher";
+import { ThemeSwitcher } from "./components/ThemeSwitcher";
 import { NetworkPanel } from "./components/NetworkPanel";
 import { PrintHistory } from "./components/PrintHistory";
 import { PreviewPanel } from "./components/PreviewPanel";
@@ -13,6 +14,17 @@ import { RawPrintPanel } from "./components/RawPrintPanel";
 import { hubFromWsUrl } from "./lib/discovery";
 import { flushHistory, loadJobs, recordToJob, saveJob } from "./store/history";
 import { useLocale } from "./i18n/context";
+import {
+  bridgeBaseToWsUrl,
+  isBridgeOrigin,
+  isExternalDemoHost,
+  lanUiUrl,
+  loadBridgeBase,
+  normalizeBridgeBase,
+  resolveBridgeWsUrl,
+  saveBridgeBase,
+} from "./lib/bridge-url";
+import { loadReceiptFontId } from "./lib/receipt-font-preference";
 
 export interface StoredJob extends PrintJobMeta {
   payload: Uint8Array;
@@ -20,22 +32,13 @@ export interface StoredJob extends PrintJobMeta {
 }
 
 function initialWsUrl(): string {
-  const params = new URLSearchParams(window.location.search);
-  const override = params.get("ws");
-  if (override) return override;
-
-  if (import.meta.env.DEV) {
-    const host = window.location.hostname === "localhost" ? "localhost" : window.location.hostname;
-    return `ws://${host}:8081`;
-  }
-
-  const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
-  return `${proto}//${window.location.host}`;
+  return resolveBridgeWsUrl();
 }
 
 export function App() {
   const { t, format } = useLocale();
-  const [wsUrl] = useState(initialWsUrl);
+  const [wsUrl, setWsUrl] = useState(initialWsUrl);
+  const [bridgeInput, setBridgeInput] = useState(() => loadBridgeBase()?.replace(/^https?:\/\//, "") ?? "");
   const [connected, setConnected] = useState(false);
   const [status, setStatus] = useState<HubStatus | null>(null);
   const [jobs, setJobs] = useState<StoredJob[]>([]);
@@ -75,7 +78,13 @@ export function App() {
 
   const addJob = useCallback((meta: PrintJobMeta, payload: Uint8Array) => {
     const hubId = activeHubIdRef.current || meta.hubId || "unknown";
-    const enriched = { ...meta, hubId };
+    const protocol =
+      meta.protocol === "tspl" || isTsplPayload(payload) ? "tspl" : meta.protocol;
+    const labelSize =
+      protocol === "tspl"
+        ? formatLabelSize(parseTspl(payload).commands) ?? meta.labelSize
+        : meta.labelSize;
+    const enriched = { ...meta, hubId, protocol, labelSize };
     setJobs((prev) => {
       const next = [{ ...enriched, payload }, ...prev.filter((j) => j.id !== meta.id)];
       return next;
@@ -83,6 +92,22 @@ export function App() {
     setSelectedId(meta.id);
     void saveJob(enriched, payload, hubId);
   }, []);
+
+  const connectBridge = useCallback(
+    (address?: string) => {
+      const raw = (address ?? bridgeInput).trim();
+      if (!raw) return;
+      try {
+        const base = normalizeBridgeBase(raw);
+        saveBridgeBase(base);
+        setBridgeInput(base.replace(/^https?:\/\//, ""));
+        setWsUrl(bridgeBaseToWsUrl(base));
+      } catch {
+        /* invalid input */
+      }
+    },
+    [bridgeInput],
+  );
 
   const connect = useCallback(() => {
     clientRef.current?.disconnect();
@@ -123,42 +148,61 @@ export function App() {
     [visibleJobs, selectedId],
   );
 
+  const receiptFontId = loadReceiptFontId();
+
   const [preview, setPreview] = useState<{
     imageDataUrl: string | null;
     paperWidth: number;
+    labelSize: string | null;
     canvas: HTMLCanvasElement | null;
     warnings: string[];
   }>({
     imageDataUrl: null,
     paperWidth: 384,
+    labelSize: null,
     canvas: null,
     warnings: [],
   });
 
   useEffect(() => {
     if (!selectedJob) {
-      setPreview({ imageDataUrl: null, paperWidth: 384, canvas: null, warnings: [] });
+      setPreview({
+        imageDataUrl: null,
+        paperWidth: 384,
+        labelSize: null,
+        canvas: null,
+        warnings: [],
+      });
       return;
     }
-    if (selectedJob.protocol === "tspl") {
+    const tsplJob = selectedJob.protocol === "tspl" || isTsplPayload(selectedJob.payload);
+    if (tsplJob) {
       const parsed = parseTspl(selectedJob.payload);
       setPreview({
         imageDataUrl: null,
         paperWidth: 384,
+        labelSize: formatLabelSize(parsed.commands),
         canvas: renderTsplToCanvas(parsed.commands),
         warnings: parsed.warnings,
       });
       return;
     }
 
-    setPreview({ imageDataUrl: null, paperWidth: 384, canvas: null, warnings: [] });
+    setPreview({
+      imageDataUrl: null,
+      paperWidth: 384,
+      labelSize: null,
+      canvas: null,
+      warnings: [],
+    });
 
     let cancelled = false;
-    void renderEscPosPreview(selectedJob.payload).then((result) => {
+    void renderEscPosPreview(selectedJob.payload, { receiptFontId }).then((result) => {
       if (!cancelled) {
         setPreview({
           imageDataUrl: result.imageDataUrl,
           paperWidth: result.paperWidth,
+          labelSize: null,
           canvas: null,
           warnings: result.warnings,
         });
@@ -167,7 +211,7 @@ export function App() {
     return () => {
       cancelled = true;
     };
-  }, [selectedJob]);
+  }, [selectedJob, receiptFontId]);
 
   const tcpPort = status?.tcpPort ?? DEFAULT_TCP_PORT;
   const hostIp = status?.hostIp;
@@ -184,6 +228,7 @@ export function App() {
           </p>
         </div>
         <div className="header-actions">
+          <ThemeSwitcher />
           <LanguageSwitcher />
           {!historyReady && <span className="badge">{t.app.loadingHistory}</span>}
         </div>
@@ -193,7 +238,17 @@ export function App() {
         <div className="top-bar">
           <div className="panel top-panel">
             <h2>{t.sections.network}</h2>
-            <NetworkPanel status={status} connected={connected} wsUrl={wsUrl} onReconnect={connect} />
+            <NetworkPanel
+              status={status}
+              connected={connected}
+              wsUrl={wsUrl}
+              bridgeInput={bridgeInput}
+              showBridgeSetup={isExternalDemoHost() || (!connected && !isBridgeOrigin())}
+              lanUiUrl={hostIp ? lanUiUrl(hostIp, status?.httpPort) : null}
+              onBridgeInputChange={setBridgeInput}
+              onConnectBridge={() => connectBridge()}
+              onReconnect={connect}
+            />
           </div>
 
           <div className="panel debug-top-panel top-panel">
@@ -216,6 +271,7 @@ export function App() {
             job={selectedJob}
             imageDataUrl={preview.imageDataUrl}
             paperWidth={preview.paperWidth}
+            labelSize={preview.labelSize}
             canvas={preview.canvas}
             warnings={preview.warnings}
           />

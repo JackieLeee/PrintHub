@@ -1,4 +1,6 @@
-export type RawInputFormat = "binary" | "hex" | "base64";
+import { parseEscapeNotation } from "./wire-format.js";
+
+export type RawInputFormat = "binary" | "hex" | "base64" | "tspl" | "escpos";
 
 export interface DecodedRawInput {
   data: Uint8Array;
@@ -78,6 +80,9 @@ export async function loadRawFile(file: File): Promise<DecodedRawInput> {
 }
 
 export function loadRawFromText(text: string, format: RawInputFormat): DecodedRawInput {
+  if (format === "tspl") return loadRawFromTsplCommands(text);
+  if (format === "escpos") return loadRawFromEscPosWire(text);
+
   const raw = new TextEncoder().encode(text);
   const data = decodeInput(raw, format);
 
@@ -85,6 +90,41 @@ export function loadRawFromText(text: string, format: RawInputFormat): DecodedRa
     name: format === "hex" ? "pasted.hex" : format === "base64" ? "pasted.b64" : "pasted.bin",
     data,
     format,
+    size: data.length,
+  };
+}
+
+/** Encode TSPL command lines to wire bytes (CRLF line endings). */
+export function encodeCommandsText(text: string): Uint8Array {
+  const trimmed = text.trim();
+  if (!trimmed) {
+    throw new Error("Command text is empty");
+  }
+  const normalized = trimmed.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  const body = normalized.split("\n").join("\r\n");
+  return new TextEncoder().encode(`${body}\r\n`);
+}
+
+export function loadRawFromTsplCommands(text: string): DecodedRawInput {
+  const data = encodeCommandsText(text);
+  return {
+    name: "pasted.tspl",
+    data,
+    format: "tspl",
+    size: data.length,
+  };
+}
+
+export function loadRawFromEscPosWire(text: string): DecodedRawInput {
+  const trimmed = text.trim();
+  if (!trimmed) {
+    throw new Error("Command text is empty");
+  }
+  const data = parseEscapeNotation(trimmed);
+  return {
+    name: "pasted.escpos",
+    data,
+    format: "escpos",
     size: data.length,
   };
 }

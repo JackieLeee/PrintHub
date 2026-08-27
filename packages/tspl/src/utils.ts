@@ -14,6 +14,41 @@ export function parseUnit(token: string | undefined): TsplUnit {
   return "dot";
 }
 
+export interface TsplMeasure {
+  value: number;
+  unit: TsplUnit;
+}
+
+const MEASURE_RE = /(-?[\d.]+)\s*(mm|inch|dot|in)?(?=\s|,|$)/gi;
+
+function measureFromMatch(m: RegExpMatchArray | undefined, defaultUnit: TsplUnit): TsplMeasure {
+  if (!m) return { value: 0, unit: defaultUnit };
+  return {
+    value: parseNumber(m[1]),
+    unit: m[2] ? parseUnit(m[2]) : defaultUnit,
+  };
+}
+
+/** Parse one TSC measure from the command tail, e.g. OFFSET 12.7 mm */
+export function parseSingleMeasure(line: string, defaultUnit: TsplUnit = "inch"): TsplMeasure {
+  const body = line.replace(/^[A-Z][A-Z0-9]*\s+/i, "").trim();
+  const m = body.match(/(-?[\d.]+)\s*(mm|inch|dot|in)?/i);
+  return measureFromMatch(m ?? undefined, defaultUnit);
+}
+
+/** Parse GAP/BLINE pair: GAP 2.0 mm 0.0 mm | GAP 0.12,0 | GAP 2 mm,0 mm */
+export function parseMeasurePair(
+  line: string,
+  defaultUnit: TsplUnit = "inch",
+): { first: TsplMeasure; second: TsplMeasure } {
+  const body = line.replace(/^[A-Z][A-Z0-9]*\s+/i, "").trim();
+  const matches = [...body.matchAll(MEASURE_RE)];
+  return {
+    first: measureFromMatch(matches[0], defaultUnit),
+    second: measureFromMatch(matches[1], defaultUnit),
+  };
+}
+
 /** Split TSPL line into command + parameter tokens, respecting quoted strings. */
 export function tokenizeLine(line: string): string[] {
   const tokens: string[] = [];
@@ -71,7 +106,12 @@ export function hexToBytes(hex: string): Uint8Array {
   return out;
 }
 
-export function bitmapByteLength(widthDots: number, heightDots: number): number {
-  const widthBytes = Math.ceil(widthDots / 8);
+/** TSPL BITMAP width is in bytes; height is in dots. */
+export function bitmapDataLength(widthBytes: number, heightDots: number): number {
   return widthBytes * heightDots;
+}
+
+/** @deprecated Use bitmapDataLength — width must be bytes, not dots. */
+export function bitmapByteLength(widthBytes: number, heightDots: number): number {
+  return bitmapDataLength(widthBytes, heightDots);
 }

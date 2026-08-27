@@ -1,7 +1,18 @@
 import { DEFAULT_PAPER_WIDTH } from "./utils.js";
+import { estimatePaperWidthFromRaster } from "../paper-width.js";
+import { isBlankBitmap } from "../raster-detect.js";
 import type { ImageCommand } from "./types.js";
 
+const BLANK_IMAGE: Pick<ImageCommand, "width" | "height" | "imageSize" | "imageDataUrl" | "mode"> = {
+  width: 0,
+  height: 0,
+  imageSize: 0,
+  imageDataUrl: "",
+  mode: "blank",
+};
+
 export function rasterToDataUrl(data: Uint8Array, width: number, height: number): string {
+  if (typeof document === "undefined") return "";
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
@@ -36,16 +47,27 @@ export interface EscStarBand {
   data: Uint8Array;
 }
 
+function isBlankBand(band: EscStarBand): boolean {
+  return isBlankBitmap(band.data);
+}
+
 export function decodeEscStarStripes(
   bands: EscStarBand[],
 ): Pick<ImageCommand, "width" | "height" | "imageSize" | "imageDataUrl" | "mode"> {
-  const width = bands.reduce((max, band) => Math.max(max, band.width), 0);
-  const height = bands.reduce((sum, band) => sum + band.heightDots, 0);
-  const imageSize = bands.reduce((sum, band) => sum + band.data.length, 0);
-  const dot24 = bands.some((band) => band.mode === 32 || band.mode === 33);
-  const density = bands.some((band) => band.mode === 1 || band.mode === 33) ? "double" : "single";
-  const stripeCount = bands.length;
+  const activeBands = bands.filter((band) => !isBlankBand(band));
+  if (activeBands.length === 0) return { ...BLANK_IMAGE };
+
+  const width = activeBands.reduce((max, band) => Math.max(max, band.width), 0);
+  const height = activeBands.reduce((sum, band) => sum + band.heightDots, 0);
+  const imageSize = activeBands.reduce((sum, band) => sum + band.data.length, 0);
+  const dot24 = activeBands.some((band) => band.mode === 32 || band.mode === 33);
+  const density = activeBands.some((band) => band.mode === 1 || band.mode === 33) ? "double" : "single";
+  const stripeCount = activeBands.length;
   const mode = `ESC * ${dot24 ? "24" : "8"}-dot ${density} density, ${stripeCount} stripe${stripeCount === 1 ? "" : "s"}`;
+
+  if (typeof document === "undefined") {
+    return { width, height, imageSize, imageDataUrl: "", mode };
+  }
 
   const canvas = document.createElement("canvas");
   canvas.width = Math.max(1, width);
@@ -59,7 +81,7 @@ export function decodeEscStarStripes(
   imageData.data.fill(255);
 
   let yOffset = 0;
-  for (const band of bands) {
+  for (const band of activeBands) {
     const bytesPerColumn = band.heightDots / 8;
     for (let x = 0; x < band.width; x++) {
       for (let dot = 0; dot < band.heightDots; dot++) {
@@ -92,6 +114,10 @@ export function decodeGsV0Image(
   height: number,
   data: Uint8Array,
 ): Pick<ImageCommand, "width" | "height" | "imageSize" | "imageDataUrl" | "mode"> {
+  if (height <= 0 || width <= 0 || isBlankBitmap(data)) {
+    return { ...BLANK_IMAGE };
+  }
+
   const modeLabels: Record<number, string> = {
     0: "normal",
     1: "double width",
@@ -109,9 +135,5 @@ export function decodeGsV0Image(
 }
 
 export function estimatePaperWidthFromImage(width: number): number {
-  if (width <= 0) return DEFAULT_PAPER_WIDTH;
-  if (width <= 256) return 256;
-  if (width <= 384) return 384;
-  if (width <= 512) return 512;
-  return width;
+  return estimatePaperWidthFromRaster(width) || DEFAULT_PAPER_WIDTH;
 }

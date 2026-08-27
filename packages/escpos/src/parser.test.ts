@@ -95,7 +95,7 @@ describe("parseEscPos", () => {
     strictEqual(commands.some((c) => c.kind === "text" && c.text.includes("(k")), false);
   });
 
-  it("merges consecutive ESC * 24-dot stripes into bitImageRun", () => {
+  it("merges consecutive ESC * 24-dot stripes into bitImage", () => {
     const width = 8;
     const wL = width & 0xff;
     const wH = (width >> 8) & 0xff;
@@ -105,12 +105,11 @@ describe("parseEscPos", () => {
       0x1b, 0x2a, 0x21, wL, wH, ...stripe, 0x0a,
     );
     const { commands } = parseEscPos(payload);
-    const run = commands.find((c) => c.kind === "bitImageRun");
-    strictEqual(run?.kind, "bitImageRun");
-    if (run?.kind === "bitImageRun") {
-      strictEqual(run.bands.length, 2);
-      strictEqual(run.totalHeight, 48);
-      strictEqual(run.width, width);
+    const img = commands.find((c) => c.kind === "bitImage");
+    strictEqual(img?.kind, "bitImage");
+    if (img?.kind === "bitImage") {
+      strictEqual(img.height, 48);
+      strictEqual(img.width, width);
     }
   });
 
@@ -124,6 +123,32 @@ describe("parseEscPos", () => {
       strictEqual(text.text.includes("打印"), true);
       strictEqual(text.text.includes("门店"), true);
     }
+  });
+
+  it("decodes GBK Chinese after ESC t 0 and FS & (domestic POS pattern)", () => {
+    // 打印测试 in GBK, wrapped in common POS header: ESC t 0, FS &, ESC M 0
+    const gbk = bytes(0xb4, 0xf2, 0xd3, 0xa1, 0xb2, 0xe2, 0xca, 0xd4);
+    const payload = bytes(
+      0x1b, 0x40,
+      0x1b, 0x74, 0x00,
+      0x1c, 0x26,
+      0x1b, 0x4d, 0x00,
+      ...gbk,
+      0x0a,
+    );
+    const { commands } = parseEscPos(payload);
+    const text = commands.find((c) => c.kind === "text");
+    strictEqual(text?.kind, "text");
+    if (text?.kind === "text") {
+      strictEqual(text.text.includes("打印"), true);
+      strictEqual(text.text.includes("测试"), true);
+    }
+  });
+
+  it("filters GS V + DLE EOT heartbeat as non-print job", () => {
+    const heartbeat = Uint8Array.from(atob("HVZCQhAEARAEAQ=="), (c) => c.charCodeAt(0));
+    strictEqual(isEscPosStatusOrHeartbeat(heartbeat), true);
+    strictEqual(isMeaningfulPrintJob(heartbeat, "escpos"), false);
   });
 
   it("decodes UTF-8 Chinese when valid", () => {
@@ -177,5 +202,67 @@ describe("parseEscPosInspector", () => {
     strictEqual(joined.includes("合计"), true);
     strictEqual(joined.includes("方式"), true);
     strictEqual(joined.includes("Print Store"), true);
+  });
+
+  it("parses ESC i/m cut and legacy GS k barcode", () => {
+    const payload = bytes(
+      0x1d, 0x68, 0x50,
+      0x1d, 0x48, 0x02,
+      0x1d, 0x6b, 0x04,
+      ...new TextEncoder().encode("ABC123"),
+      0x00,
+      0x1b, 0x69,
+    );
+    const { commands } = parseEscPosInspector(payload);
+    const bc = commands.find((c) => c.category === "barcode");
+    strictEqual(bc?.category, "barcode");
+    if (bc?.category === "barcode") {
+      strictEqual(bc.data, "ABC123");
+      strictEqual(bc.height, 80);
+      strictEqual(bc.position, "below");
+    }
+    strictEqual(commands.some((c) => c.category === "cut" && c.mode === "full"), true);
+  });
+
+  it("parses ESC d and ESC J feed with units", () => {
+    const payload = bytes(0x1b, 0x64, 0x03, 0x1b, 0x4a, 0x18);
+    const { commands } = parseEscPosInspector(payload);
+    const feeds = commands.filter((c) => c.category === "feed");
+    strictEqual(feeds.length, 2);
+    strictEqual((feeds[0] as { lines: number; unit: string }).lines, 3);
+    strictEqual((feeds[0] as { unit: string }).unit, "lines");
+    strictEqual((feeds[1] as { lines: number; unit: string }).lines, 0x18);
+    strictEqual((feeds[1] as { unit: string }).unit, "dots");
+  });
+
+  it("applies ESC ! underline bit", () => {
+    const payload = bytes(0x1b, 0x21, 0x80, ...new TextEncoder().encode("U"));
+    const { commands } = parseEscPosInspector(payload);
+    const font = commands.find((c) => c.category === "font");
+    strictEqual(font?.category, "font");
+    if (font?.category === "font") {
+      strictEqual(font.underline, true);
+    }
+  });
+
+  it("parses barcode after ESC * stripe that ends early at LF", () => {
+    const stripeHeader = bytes(0x1b, 0x2a, 0x21, 0x40, 0x00);
+    const shortData = new Uint8Array(150).fill(0xff);
+    const payload = bytes(
+      ...stripeHeader,
+      ...shortData,
+      0x0a,
+      0x1b, 0x32,
+      0x1b, 0x61, 0x01,
+      0x1d, 0x6b, 0x49, 0x0a,
+      ...new TextEncoder().encode("1234567890"),
+    );
+    const { commands } = parseEscPosInspector(payload);
+    strictEqual(
+      commands.some((c) => c.category === "barcode" && c.data === "1234567890"),
+      true,
+    );
+    strictEqual(commands.some((c) => c.category === "image"), true);
+    strictEqual(commands.some((c) => c.category === "unsupported"), false);
   });
 });

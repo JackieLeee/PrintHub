@@ -1,8 +1,11 @@
 import { decodeBitmapData, parseBitmapHeader } from "./bitmap.js";
+import { parseBitmapAtOffset } from "./bitmap-scan.js";
 import type { TsplCommand, TsplParseResult, TsplUnit } from "./types.js";
 import {
   extractQuotedStrings,
+  parseMeasurePair,
   parseNumber,
+  parseSingleMeasure,
   parseUnit,
   tokenizeLine,
   unquote,
@@ -24,19 +27,67 @@ class TsplParser {
 
   parse(): TsplParseResult {
     while (this.i < this.data.length) {
+      while (this.i < this.data.length) {
+        const b = this.data[this.i]!;
+        if (b === 0x0a || b === 0x0d || b === 0x20 || b === 0x09) {
+          this.i++;
+          continue;
+        }
+        break;
+      }
+      if (this.i >= this.data.length) break;
+
+      const bitmap = parseBitmapAtOffset(this.data, this.i);
+      if (bitmap) {
+        this.pushBitmap(bitmap);
+        this.i = bitmap.nextOffset;
+        continue;
+      }
+
       const lineStart = this.i;
       const line = this.readLine();
       if (!line.trim()) continue;
 
       const upper = line.trim().toUpperCase();
       if (upper.startsWith("BITMAP")) {
-        this.parseBitmap(line, lineStart);
+        this.i = lineStart;
+        this.parseBitmapLine(line);
         continue;
       }
 
       this.parseTextLine(line);
     }
     return { commands: this.commands, warnings: this.warnings };
+  }
+
+  private pushBitmap(bitmap: { header: { x: number; y: number; width: number; height: number; mode: number }; data: Uint8Array }): void {
+    const { header, data } = bitmap;
+    if (data.length === 0) {
+      this.warnings.push(`BITMAP ${header.width}x${header.height} — no image data`);
+      return;
+    }
+    this.commands.push({
+      kind: "bitmap",
+      x: header.x,
+      y: header.y,
+      width: header.width,
+      height: header.height,
+      mode: header.mode,
+      data,
+    });
+  }
+
+  private parseBitmapLine(line: string): void {
+    const header = parseBitmapHeader(line);
+    if (!header) {
+      this.warnings.push(`Invalid BITMAP line: ${line.slice(0, 48)}`);
+      return;
+    }
+
+    const { data, consumed } = decodeBitmapData(header, this.trailingBytes());
+    if (consumed > 0) this.i += consumed;
+
+    this.pushBitmap({ header, data });
   }
 
   private readLine(): string {
@@ -59,32 +110,6 @@ class TsplParser {
     return this.data.slice(this.i);
   }
 
-  private parseBitmap(line: string, _lineStart: number): void {
-    const header = parseBitmapHeader(line);
-    if (!header) {
-      this.warnings.push(`Invalid BITMAP line: ${line.slice(0, 48)}`);
-      return;
-    }
-
-    const { data, consumed } = decodeBitmapData(header, this.trailingBytes());
-    if (consumed > 0) this.i += consumed;
-
-    if (data.length === 0) {
-      this.warnings.push(`BITMAP ${header.width}x${header.height} — no image data`);
-      return;
-    }
-
-    this.commands.push({
-      kind: "bitmap",
-      x: header.x,
-      y: header.y,
-      width: header.width,
-      height: header.height,
-      mode: header.mode,
-      data,
-    });
-  }
-
   private parseTextLine(line: string): void {
     const trimmed = line.trim();
     const tokens = tokenizeLine(trimmed);
@@ -96,16 +121,54 @@ class TsplParser {
         this.parseSize(trimmed);
         break;
       case "GAP":
-        this.parseGap(tokens, trimmed);
+        this.pushMeasurePair("gap", trimmed);
+        break;
+      case "BLINE":
+        this.pushMeasurePair("bline", trimmed);
         break;
       case "DIRECTION":
-        this.commands.push({ kind: "direction", value: parseNumber(tokens[1]) === 1 ? 1 : 0 });
+        this.commands.push({
+          kind: "direction",
+          value: parseNumber(tokens[1]) === 1 ? 1 : 0,
+          mirror: parseNumber(tokens[2]) === 1 ? 1 : 0,
+        });
         break;
       case "REFERENCE":
         this.commands.push({ kind: "reference", x: parseNumber(tokens[1]), y: parseNumber(tokens[2]) });
         break;
-      case "OFFSET":
-        this.commands.push({ kind: "offset", x: parseNumber(tokens[1]), y: parseNumber(tokens[2]) });
+      case "OFFSET": {
+        const measure = parseSingleMeasure(trimmed);
+        this.commands.push({ kind: "offset", value: measure.value, unit: measure.unit });
+        break;
+      }
+      case "SHIFT":
+        if (tokens.length >= 3) {
+          this.commands.push({ kind: "shift", x: parseNumber(tokens[1]), y: parseNumber(tokens[2]) });
+        } else {
+          this.commands.push({ kind: "shift", x: 0, y: parseNumber(tokens[1]) });
+        }
+        break;
+      case "SPEED":
+        this.commands.push({ kind: "speed", ips: parseNumber(tokens[1]) });
+        break;
+      case "DENSITY":
+        this.commands.push({ kind: "density", level: parseNumber(tokens[1]) });
+        break;
+      case "FEED":
+        this.commands.push({ kind: "feed", dots: parseNumber(tokens[1]) });
+        break;
+      case "BACKFEED":
+        this.commands.push({ kind: "backfeed", dots: parseNumber(tokens[1]) });
+        break;
+      case "FORMFEED":
+        this.commands.push({ kind: "formfeed" });
+        break;
+      case "SET":
+      case "SETPEEL":
+      case "SETCUTTER":
+      case "SETTEAR":
+      case "COUNTRY":
+        // Printer hardware settings — no structured preview effect.
         break;
       case "CLS":
         this.commands.push({ kind: "cls" });
@@ -189,8 +252,19 @@ class TsplParser {
     }
   }
 
+  private pushMeasurePair(kind: "gap" | "bline", line: string): void {
+    const pair = parseMeasurePair(line);
+    const unit: TsplUnit =
+      pair.first.unit !== "dot" ? pair.first.unit : pair.second.unit !== "dot" ? pair.second.unit : "inch";
+    this.commands.push({
+      kind,
+      value: pair.first.value,
+      sensorOffset: pair.second.value,
+      unit,
+    });
+  }
+
   private parseSize(line: string): void {
-    // SIZE 40 mm, 30 mm  |  SIZE 4, 3  (inch)  |  SIZE 320,240
     const body = line.replace(/^SIZE\s+/i, "");
     const parts = body.split(",").map((p) => p.trim());
     if (parts.length < 2) return;
@@ -204,16 +278,6 @@ class TsplParser {
     const unit: TsplUnit = wUnit !== "dot" ? wUnit : hUnit;
 
     this.commands.push({ kind: "size", width: wVal, height: hVal, unit });
-  }
-
-  private parseGap(tokens: string[], line: string): void {
-    const unit = line.toLowerCase().includes("inch") ? "inch" : line.toLowerCase().includes("mm") ? "mm" : "dot";
-    this.commands.push({
-      kind: "gap",
-      value: parseNumber(tokens[1]),
-      offset: parseNumber(tokens[2]),
-      unit,
-    });
   }
 
   private parseText(line: string, tokens: string[]): void {

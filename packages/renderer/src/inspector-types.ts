@@ -111,8 +111,12 @@ export interface RenderElement {
   imageDataUrl?: string;
   alignment?: "left" | "center" | "right";
   fontSize?: number;
+  charWidthMul?: number;
+  charHeightMul?: number;
   bold?: boolean;
   underline?: boolean;
+  anchorRight?: boolean;
+  mergedCommandIds?: string[];
 }
 
 export interface RenderResult {

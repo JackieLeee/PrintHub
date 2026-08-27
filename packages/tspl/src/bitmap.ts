@@ -1,9 +1,11 @@
-import { hexToBytes, bitmapByteLength } from "./utils.js";
+import { bitmapDataLength, hexToBytes } from "./utils.js";
 
 export interface BitmapHeader {
   x: number;
   y: number;
+  /** Row width in bytes (TSPL spec). */
   width: number;
+  /** Height in dots (TSPL spec). */
   height: number;
   mode: number;
   /** Hex payload on same line after header, if any */
@@ -50,12 +52,16 @@ export function decodeBitmapData(
   header: BitmapHeader,
   trailingBinary: Uint8Array,
 ): { data: Uint8Array; consumed: number } {
-  const expected = bitmapByteLength(header.width, header.height);
+  const expected = bitmapDataLength(header.width, header.height);
 
   if (header.inlineHex.length > 0) {
-    const data = hexToBytes(header.inlineHex);
-    if (data.length >= expected) return { data: data.slice(0, expected), consumed: 0 };
-    if (data.length > 0) return { data, consumed: 0 };
+    const trimmed = header.inlineHex.trim();
+    const isHex = /^[0-9a-fA-F\s]+$/.test(trimmed);
+    if (isHex) {
+      const data = hexToBytes(trimmed);
+      if (data.length >= expected) return { data: data.slice(0, expected), consumed: 0 };
+      if (data.length > 0) return { data, consumed: 0 };
+    }
   }
 
   if (trailingBinary.length >= expected) {
@@ -65,11 +71,27 @@ export function decodeBitmapData(
   return { data: trailingBinary.slice(), consumed: trailingBinary.length };
 }
 
-export function decodeBitmapFromHex(hex: string, widthDots: number, heightDots: number): Uint8Array {
+export function decodeBitmapFromHex(hex: string, widthBytes: number, heightDots: number): Uint8Array {
   const data = hexToBytes(hex);
-  const expected = bitmapByteLength(widthDots, heightDots);
+  const expected = bitmapDataLength(widthBytes, heightDots);
   if (data.length >= expected) return data.slice(0, expected);
   const out = new Uint8Array(expected);
   out.set(data);
+  return out;
+}
+
+/** Many POS drivers send inverted bitmap (mostly 1-bits = paper white). Flip for preview. */
+export function tsplBitmapForPreview(data: Uint8Array): Uint8Array {
+  if (data.length === 0) return data;
+  let set = 0;
+  const total = data.length * 8;
+  for (const b of data) {
+    for (let bit = 0; bit < 8; bit++) {
+      if (b & (0x80 >> bit)) set++;
+    }
+  }
+  if (set / total <= 0.5) return data;
+  const out = new Uint8Array(data.length);
+  for (let i = 0; i < data.length; i++) out[i] = data[i]! ^ 0xff;
   return out;
 }

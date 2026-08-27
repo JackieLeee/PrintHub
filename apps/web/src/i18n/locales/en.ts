@@ -2,6 +2,7 @@ import type { Translations } from "../types.js";
 
 export const en: Translations = {
   lang: { label: "Language", zh: "中文", en: "English" },
+  theme: { label: "Theme" },
   app: {
     title: "virt-printer-hub",
     subtitle: "Virtual printer · {host} · TCP {tcp}",
@@ -26,6 +27,12 @@ export const en: Translations = {
     portCount: "{n} ports",
     wsLabel: "WebSocket",
     reconnect: "Reconnect",
+    lanAccess: "LAN URL",
+    bridgeSetupTitle: "Connect to Bridge",
+    bridgeSetupHint:
+      "GitHub Pages cannot reach your local Bridge. Enter the Bridge host (e.g. 192.168.1.42:8081), or open http://<host-ip>:8081 in the browser.",
+    bridgePlaceholder: "192.168.1.42:8081",
+    bridgeConnect: "Connect",
   },
   history: {
     empty: "No print jobs yet",
@@ -40,6 +47,12 @@ export const en: Translations = {
     warnings: "{n} parse warnings",
     rendering: "Rendering…",
     paperWidth: "{n}px paper",
+    labelSize: "{size}",
+    rotateLeft: "Rotate left 90°",
+    rotateRight: "Rotate right 90°",
+    mirrorH: "Mirror horizontal",
+    mirrorV: "Mirror vertical",
+    resetView: "Reset view",
   },
   samples: {
     printEscPos: "Print ESC/POS Sample",
@@ -50,8 +63,11 @@ export const en: Translations = {
     download: "Download file",
     copyHex: "Copy hex",
     copyBase64: "Copy Base64",
+    copyCommands: "Copy commands",
     copiedHex: "Hex copied",
     copiedBase64: "Base64 copied",
+    copiedCommands: "Commands copied",
+    copiedCommandsPartial: "Commands copied (BITMAP binary omitted — not paste-safe)",
     downloaded: "Download started",
     copyFailed: "Copy failed",
   },
@@ -59,11 +75,21 @@ export const en: Translations = {
     tabFile: "File",
     tabHex: "Hex",
     tabBase64: "Base64",
+    tabTspl: "TSPL",
+    tabEscpos: "ESC/POS wire",
     pickFile: "Choose binary file",
     submitting: "Submitting…",
     decodePrint: "Decode & print",
+    tsplPrint: "Send TSPL",
+    escposPrint: "Send ESC/POS",
     hexPlaceholder: "Paste hex, e.g. 1B 40 48 65 6C 6C 6F",
     base64Placeholder: "Paste Base64-encoded ESC/POS or TSPL data",
+    tsplPlaceholder:
+      "One TSPL command per line, e.g.:\nSIZE 50 mm, 30 mm\nCLS\nTEXT 22,40,\"TSS24.BF2\",0,1,1,\"Hello\"\nPRINT 1",
+    escposPlaceholder:
+      "Paste \\x escape wire text (from preview Copy commands), e.g.:\n\\x1B\\x40\\x1Ba\\x01Title\\n\\x1Bd\\x04",
+    escposHint:
+      "Printer wire bytes: \\x1B = ESC, \\x1D = GS — not TSPL-style text. Printable ASCII stays literal; control bytes are \\xNN.",
     submitted: "Submitted {jobId}{protocol} · {label}",
     submitFailed: "Submit failed",
     fileParseFailed: "Failed to parse file",

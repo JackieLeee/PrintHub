@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import type { IncomingMessage } from "node:http";
 import type { Server as HttpServer } from "node:http";
 import { WebSocketServer, WebSocket } from "ws";
-import { isMeaningfulPrintJob } from "./job-filter.js";
+import { buildDleEotResponses, isMeaningfulPrintJob, prepareTcpPrintPayload } from "./job-filter.js";
 import type {
   BridgeMessage,
   DeviceConnection,
@@ -16,9 +16,11 @@ import type {
 import {
   DEFAULT_HTTP_PORT,
   DEFAULT_TCP_PORT,
+  TCP_FLUSH_IDLE_MS,
   TCP_IDLE_TIMEOUT_MS,
   WS_PING_INTERVAL_MS,
 } from "@virt-printer/shared";
+import { formatLabelSize, isTsplPayload, parseTspl } from "@virt-printer/tspl";
 import { buildJobMessages } from "./chunking.js";
 import { startHttpServer } from "./http-server.js";
 import { imageBufferToPrintPayload, type ImagePrintOptions } from "./image-print.js";
@@ -43,9 +45,12 @@ function getLocalIp(): string {
 }
 
 function detectProtocol(payload: Buffer): Protocol {
-  const head = payload.subarray(0, 64).toString("utf8").toUpperCase();
-  if (head.includes("SIZE ") || head.includes("GAP ") || head.startsWith("CLS")) return "tspl";
-  return "escpos";
+  return isTsplPayload(payload) ? "tspl" : "escpos";
+}
+
+function labelSizeFromPayload(payload: Buffer): string | undefined {
+  if (!isTsplPayload(payload)) return undefined;
+  return formatLabelSize(parseTspl(payload).commands) ?? undefined;
 }
 
 function wsClientIp(req: IncomingMessage): string {
@@ -236,6 +241,28 @@ export class VirtPrinterBridge {
     this.broadcastStatus();
 
     const chunks: Buffer[] = [];
+    let flushTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const flushTcpJob = () => {
+      if (chunks.length === 0) return;
+      const raw = Buffer.concat(chunks);
+      const prepared = prepareTcpPrintPayload(raw);
+      chunks.length = 0;
+      if (!prepared) return;
+      const payload = Buffer.from(prepared);
+      const protocol = detectProtocol(payload);
+      if (isMeaningfulPrintJob(prepared, protocol)) {
+        this.emitJob(connection, payload, "tcp");
+      }
+    };
+
+    const scheduleFlush = () => {
+      if (flushTimer) clearTimeout(flushTimer);
+      flushTimer = setTimeout(() => {
+        flushTimer = null;
+        flushTcpJob();
+      }, TCP_FLUSH_IDLE_MS);
+    };
 
     const touch = () => {
       connection.lastActivityAt = Date.now();
@@ -246,20 +273,28 @@ export class VirtPrinterBridge {
       touch();
       chunks.push(chunk);
       connection.protocol = detectProtocol(Buffer.concat(chunks));
+
+      // Reply to DLE EOT status polls so POS software stays connected
+      for (const statusByte of buildDleEotResponses(chunk)) {
+        socket.write(statusByte);
+      }
+
+      scheduleFlush();
     });
 
     socket.on("timeout", () => {
       console.log(`[bridge] TCP idle timeout ${remoteIp}`);
+      if (flushTimer) clearTimeout(flushTimer);
+      flushTcpJob();
       socket.destroy();
     });
 
     socket.on("close", () => {
-      const payload = Buffer.concat(chunks);
-      const protocol = detectProtocol(payload);
-      if (payload.length > 0 && isMeaningfulPrintJob(payload, protocol)) {
-        this.emitJob(connection, payload, "tcp");
-      } else if (payload.length > 0) {
-        console.log(`[bridge] ignored status/heartbeat from ${remoteIp} (${payload.length} bytes)`);
+      if (flushTimer) clearTimeout(flushTimer);
+      flushTcpJob();
+      const leftover = Buffer.concat(chunks);
+      if (leftover.length > 0) {
+        console.log(`[bridge] ignored status/heartbeat from ${remoteIp} (${leftover.length} bytes)`);
       }
       this.connections.delete(sessionId);
       this.broadcast({ type: "connection.close", sessionId });
@@ -286,7 +321,7 @@ export class VirtPrinterBridge {
       receivedAt: Date.now(),
       byteLength: payload.length,
       widthMm: connection.protocol === "escpos" ? 58 : undefined,
-      labelSize: connection.protocol === "tspl" ? "40x30" : undefined,
+      labelSize: labelSizeFromPayload(payload),
       source,
     };
 

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { HubStatus } from "@virt-printer/shared";
 import { useLocale } from "../i18n/context";
-import { loadRawFile, loadRawFromText, type RawInputFormat } from "../lib/raw-input";
+import { loadRawFile, loadRawFromText } from "../lib/raw-input";
 import { resolveHttpBase, submitRawPayload } from "../lib/print-api";
 import {
   ESCPOS_SAMPLE_FILENAME,
@@ -14,7 +14,7 @@ interface Props {
   status: HubStatus | null;
 }
 
-type InputMode = "file" | "hex" | "base64";
+type InputMode = "file" | "hex" | "base64" | "tspl" | "escpos";
 
 export function RawPrintPanel({ status }: Props) {
   const { t, format } = useLocale();
@@ -67,9 +67,14 @@ export function RawPrintPanel({ status }: Props) {
   }
 
   async function onTextSubmit() {
-    const formatMode: RawInputFormat = inputMode === "hex" ? "hex" : "base64";
     try {
-      const loaded = loadRawFromText(textInput, formatMode);
+      const formatMap = {
+        hex: "hex",
+        base64: "base64",
+        tspl: "tspl",
+        escpos: "escpos",
+      } as const;
+      const loaded = loadRawFromText(textInput, formatMap[inputMode as keyof typeof formatMap]);
       await handleSubmit(loaded.data, loaded.name);
     } catch (err) {
       setError(err instanceof Error ? err.message : t.rawPrint.decodeFailed);
@@ -80,7 +85,22 @@ export function RawPrintPanel({ status }: Props) {
     file: t.rawPrint.tabFile,
     hex: t.rawPrint.tabHex,
     base64: t.rawPrint.tabBase64,
+    tspl: t.rawPrint.tabTspl,
+    escpos: t.rawPrint.tabEscpos,
   };
+
+  function placeholderFor(mode: InputMode): string {
+    if (mode === "hex") return t.rawPrint.hexPlaceholder;
+    if (mode === "base64") return t.rawPrint.base64Placeholder;
+    if (mode === "tspl") return t.rawPrint.tsplPlaceholder;
+    return t.rawPrint.escposPlaceholder;
+  }
+
+  function submitLabelFor(mode: InputMode): string {
+    if (mode === "tspl") return t.rawPrint.tsplPrint;
+    if (mode === "escpos") return t.rawPrint.escposPrint;
+    return t.rawPrint.decodePrint;
+  }
 
   return (
     <div className="raw-print-panel">
@@ -104,7 +124,7 @@ export function RawPrintPanel({ status }: Props) {
       </div>
 
       <div className="raw-tabs">
-        {(["file", "hex", "base64"] as const).map((mode) => (
+        {(["file", "hex", "base64", "tspl", "escpos"] as const).map((mode) => (
           <button
             key={mode}
             type="button"
@@ -120,7 +140,7 @@ export function RawPrintPanel({ status }: Props) {
         <label className="upload-btn">
           <input
             type="file"
-            accept=".bin,.escpos,.prn,.txt,application/octet-stream"
+            accept=".bin,.escpos,.prn,.txt,.tspl,application/octet-stream"
             onChange={onFileChange}
             disabled={submitting}
           />
@@ -128,16 +148,18 @@ export function RawPrintPanel({ status }: Props) {
         </label>
       ) : (
         <>
+          {inputMode === "escpos" && <p className="raw-format-hint">{t.rawPrint.escposHint}</p>}
           <textarea
             className="raw-textarea"
             value={textInput}
             onChange={(e) => setTextInput(e.target.value)}
-            placeholder={inputMode === "hex" ? t.rawPrint.hexPlaceholder : t.rawPrint.base64Placeholder}
-            rows={4}
+            placeholder={placeholderFor(inputMode)}
+            rows={inputMode === "tspl" || inputMode === "escpos" ? 8 : 4}
             disabled={submitting}
+            spellCheck={false}
           />
           <button type="button" onClick={() => void onTextSubmit()} disabled={submitting || !textInput.trim()}>
-            {submitting ? t.rawPrint.submitting : t.rawPrint.decodePrint}
+            {submitting ? t.rawPrint.submitting : submitLabelFor(inputMode)}
           </button>
         </>
       )}

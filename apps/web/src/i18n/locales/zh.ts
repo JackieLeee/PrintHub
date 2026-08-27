@@ -2,6 +2,7 @@ import type { Translations } from "../types.js";
 
 export const zh: Translations = {
   lang: { label: "语言", zh: "中文", en: "English" },
+  theme: { label: "主题" },
   app: {
     title: "virt-printer-hub",
     subtitle: "虚拟打印机 · {host} · TCP {tcp}",
@@ -26,6 +27,12 @@ export const zh: Translations = {
     portCount: "{n} 个端口",
     wsLabel: "WebSocket",
     reconnect: "重连",
+    lanAccess: "局域网访问地址",
+    bridgeSetupTitle: "连接 Bridge",
+    bridgeSetupHint:
+      "GitHub Pages 无法直连本机 Bridge。请填写运行 Bridge 的机器 IP（如 192.168.1.42:8081），或直接在浏览器打开 http://本机IP:8081",
+    bridgePlaceholder: "192.168.1.42:8081",
+    bridgeConnect: "连接",
   },
   history: {
     empty: "暂无打印记录",
@@ -40,6 +47,12 @@ export const zh: Translations = {
     warnings: "{n} 条解析提示",
     rendering: "渲染中…",
     paperWidth: "{n}px paper",
+    labelSize: "{size}",
+    rotateLeft: "左转 90°",
+    rotateRight: "右转 90°",
+    mirrorH: "水平镜像",
+    mirrorV: "垂直镜像",
+    resetView: "重置视图",
   },
   samples: {
     printEscPos: "Print ESC/POS Sample",
@@ -50,8 +63,11 @@ export const zh: Translations = {
     download: "下载 File",
     copyHex: "复制 Hex",
     copyBase64: "复制 Base64",
+    copyCommands: "复制指令",
     copiedHex: "已复制 Hex",
     copiedBase64: "已复制 Base64",
+    copiedCommands: "已复制指令",
+    copiedCommandsPartial: "已复制指令（BITMAP 等二进制段已省略，不可原样粘贴）",
     downloaded: "已开始下载",
     copyFailed: "复制失败",
   },
@@ -59,11 +75,21 @@ export const zh: Translations = {
     tabFile: "File",
     tabHex: "Hex",
     tabBase64: "Base64",
+    tabTspl: "TSPL 指令",
+    tabEscpos: "ESC/POS 线格式",
     pickFile: "选择二进制文件",
     submitting: "提交中…",
     decodePrint: "解码并打印",
+    tsplPrint: "发送 TSPL",
+    escposPrint: "发送 ESC/POS",
     hexPlaceholder: "粘贴十六进制，如 1B 40 48 65 6C 6C 6F",
     base64Placeholder: "粘贴 Base64 编码的 ESC/POS 或 TSPL 数据",
+    tsplPlaceholder:
+      "每行一条 TSPL 指令，例如：\nSIZE 50 mm, 30 mm\nCLS\nTEXT 22,40,\"TSS24.BF2\",0,1,1,\"Hello\"\nPRINT 1",
+    escposPlaceholder:
+      "粘贴 \\x 转义线格式（预览区「复制指令」的输出），例如：\n\\x1B\\x40\\x1Ba\\x01Title\\n\\x1Bd\\x04",
+    escposHint:
+      "这是打印机实际接收的二进制线格式：\\x1B=ESC、\\x1D=GS，与 TSPL 文本指令不同。可读 ASCII 保留原样，控制字节为 \\xNN。",
     submitted: "已提交 {jobId}{protocol} · {label}",
     submitFailed: "提交失败",
     fileParseFailed: "文件解析失败",

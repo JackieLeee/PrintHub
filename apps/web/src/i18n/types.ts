@@ -2,6 +2,7 @@ export type Locale = "zh" | "en";
 
 export interface Translations {
   lang: { label: string; zh: string; en: string };
+  theme: { label: string };
   app: {
     title: string;
     subtitle: string;
@@ -26,6 +27,11 @@ export interface Translations {
     portCount: string;
     wsLabel: string;
     reconnect: string;
+    lanAccess: string;
+    bridgeSetupTitle: string;
+    bridgeSetupHint: string;
+    bridgePlaceholder: string;
+    bridgeConnect: string;
   };
   history: {
     empty: string;
@@ -40,6 +46,12 @@ export interface Translations {
     warnings: string;
     rendering: string;
     paperWidth: string;
+    labelSize: string;
+    rotateLeft: string;
+    rotateRight: string;
+    mirrorH: string;
+    mirrorV: string;
+    resetView: string;
   };
   samples: {
     printEscPos: string;
@@ -50,8 +62,11 @@ export interface Translations {
     download: string;
     copyHex: string;
     copyBase64: string;
+    copyCommands: string;
     copiedHex: string;
     copiedBase64: string;
+    copiedCommands: string;
+    copiedCommandsPartial: string;
     downloaded: string;
     copyFailed: string;
   };
@@ -59,11 +74,18 @@ export interface Translations {
     tabFile: string;
     tabHex: string;
     tabBase64: string;
+    tabTspl: string;
+    tabEscpos: string;
     pickFile: string;
     submitting: string;
     decodePrint: string;
+    tsplPrint: string;
+    escposPrint: string;
     hexPlaceholder: string;
     base64Placeholder: string;
+    tsplPlaceholder: string;
+    escposPlaceholder: string;
+    escposHint: string;
     submitted: string;
     submitFailed: string;
     fileParseFailed: string;

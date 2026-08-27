@@ -42,17 +42,22 @@ export interface FontCommand extends BaseCommand {
   height: number;
   bold: boolean;
   underline: boolean;
+  /** Font B uses 9×17 dots vs Font A 12×24 — scale column width in preview. */
+  cellWidthScale?: number;
 }
 
 export interface StyleCommand extends BaseCommand {
   category: "style";
   bold?: boolean;
   underline?: boolean;
+  doubleStrike?: boolean;
 }
 
 export interface FeedCommand extends BaseCommand {
   category: "feed";
+  /** Line count (ESC d) or dot count (ESC J), per `unit`. */
   lines: number;
+  unit: "lines" | "dots";
 }
 
 export interface LineFeedCommand extends BaseCommand {
@@ -136,8 +141,14 @@ export interface RenderElement {
   imageDataUrl?: string;
   alignment?: "left" | "center" | "right";
   fontSize?: number;
+  charWidthMul?: number;
+  charHeightMul?: number;
   bold?: boolean;
   underline?: boolean;
+  /** Right edge anchored at render time via measureText (mixed-style lines). */
+  anchorRight?: boolean;
+  /** All ESC/POS text commands merged into this element (same logical line). */
+  mergedCommandIds?: string[];
 }
 
 export interface RenderResult {

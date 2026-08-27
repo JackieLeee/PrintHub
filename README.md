@@ -7,8 +7,6 @@
 [![pnpm](https://img.shields.io/badge/pnpm-9%2B-F69220?logo=pnpm&logoColor=white)](https://pnpm.io/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev/)
-[![GitHub Pages](https://github.com/JackieLeee/virt-printer-hub/actions/workflows/deploy-pages.yml/badge.svg)](https://github.com/JackieLeee/virt-printer-hub/actions/workflows/deploy-pages.yml)
-[![Live Demo](https://img.shields.io/badge/demo-GitHub%20Pages-blue)](https://jackieleee.github.io/virt-printer-hub/)
 
 ## Background
 
@@ -21,7 +19,7 @@ Cash registers, POS apps, and label printers usually send **raw ESC/POS or TSPL*
 | Capability | Description |
 |------------|-------------|
 | **Receive** | ESC/POS receipts and TSPL labels on TCP **9100** |
-| **Preview** | Receipt/label rendering (aligned with [EscPosInspector](https://github.com/amin-norollah/EscPosInspector)) |
+| **Preview** | Canvas receipt/label preview — ESC/POS (text, images, Code128, QR) and TSPL labels |
 | **History** | Recent jobs stored in the browser; replay and export (file / hex / Base64) |
 | **Debug** | One-click ESC/POS & TSPL samples; File / Hex / Base64 raw print |
 
@@ -43,6 +41,8 @@ pnpm dev      # build Web UI + start Bridge
 1. Open **http://localhost:8081** (or your machine’s LAN IP).
 2. Point the POS / app at **`<host>:9100`**.
 3. In the UI, try **Print ESC/POS Sample** or **Print TSPL Sample** to verify.
+
+> **LAN access:** Other devices on the same network should use `http://<bridge-host>:8081`, not `localhost`.
 
 **TCP smoke test:**
 
@@ -66,7 +66,7 @@ curl -X POST http://localhost:8081/print/raw \
 
 - `packages/bridge` — TCP listener, HTTP API, WebSocket relay, static UI
 - `packages/web` — React dashboard
-- `packages/escpos`, `packages/tspl`, `packages/renderer` — parse and render
+- `packages/escpos`, `packages/tspl`, `packages/renderer` — parse and render (ESC/POS inspector parser, TSPL label meta, Code128/QR canvas drawing)
 - `packages/shared`, `packages/relay-client` — types and WS client
 
 One process (`pnpm dev` / `pnpm start`): Bridge builds and serves `apps/web/dist` on port **8081**.

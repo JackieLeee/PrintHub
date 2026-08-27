@@ -1,5 +1,5 @@
 import type { HubStatus } from "@virt-printer/shared";
-import { DEFAULT_HTTP_PORT } from "@virt-printer/shared";
+import { resolveHttpBaseFromBridge as resolveHttpBaseImpl } from "./bridge-url";
 
 export interface RawPrintResult {
   jobId?: string;
@@ -7,16 +7,7 @@ export interface RawPrintResult {
 }
 
 export function resolveHttpBase(status: HubStatus | null): string {
-  const httpPort = status?.httpPort ?? DEFAULT_HTTP_PORT;
-  if (typeof window !== "undefined") {
-    if (window.location.port === String(httpPort) || !window.location.port) {
-      return window.location.origin;
-    }
-    const host = status?.hostIp ?? window.location.hostname;
-    return `http://${host}:${httpPort}`;
-  }
-  const host = status?.hostIp ?? "localhost";
-  return `http://${host}:${httpPort}`;
+  return resolveHttpBaseImpl(status?.hostIp ?? null);
 }
 
 export async function submitRawPayload(

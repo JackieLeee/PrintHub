@@ -7,6 +7,11 @@ interface Props {
   status: HubStatus | null;
   connected: boolean;
   wsUrl: string;
+  bridgeInput: string;
+  showBridgeSetup: boolean;
+  lanUiUrl: string | null;
+  onBridgeInputChange: (value: string) => void;
+  onConnectBridge: () => void;
   onReconnect: () => void;
 }
 
@@ -54,7 +59,17 @@ function groupWsClients(clients: WsClientInfo[]): GroupedConnection[] {
   return [...map.values()];
 }
 
-export function NetworkPanel({ status, connected, wsUrl, onReconnect }: Props) {
+export function NetworkPanel({
+  status,
+  connected,
+  wsUrl,
+  bridgeInput,
+  showBridgeSetup,
+  lanUiUrl,
+  onBridgeInputChange,
+  onConnectBridge,
+  onReconnect,
+}: Props) {
   const { t, format } = useLocale();
   const hostIp = status?.hostIp ?? "—";
   const tcpPort = status?.tcpPort ?? DEFAULT_TCP_PORT;
@@ -75,6 +90,31 @@ export function NetworkPanel({ status, connected, wsUrl, onReconnect }: Props) {
 
   return (
     <div className="network-panel network-panel-compact">
+      {showBridgeSetup && (
+        <div className="network-setup">
+          <div className="network-setup-title">{t.network.bridgeSetupTitle}</div>
+          <p className="network-setup-hint">{t.network.bridgeSetupHint}</p>
+          <div className="network-setup-row">
+            <input
+              value={bridgeInput}
+              onChange={(e) => onBridgeInputChange(e.target.value)}
+              placeholder={t.network.bridgePlaceholder}
+              onKeyDown={(e) => e.key === "Enter" && onConnectBridge()}
+            />
+            <button type="button" onClick={onConnectBridge}>
+              {t.network.bridgeConnect}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {lanUiUrl && (
+        <div className="network-lan">
+          <span className="network-lan-label">{t.network.lanAccess}</span>
+          <code className="network-lan-url">{lanUiUrl}</code>
+        </div>
+      )}
+
       <div className="network-row highlight">
         <div>
           <div className="network-role">{t.network.localHub}</div>

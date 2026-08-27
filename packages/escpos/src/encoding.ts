@@ -1,5 +1,6 @@
+import { decodeCp437, decodeCp850, decodeCp860 } from "./cp437.js";
+
 const UTF8_DECODER = new TextDecoder("utf-8", { fatal: false });
-const LATIN_DECODER = new TextDecoder("iso-8859-1", { fatal: false });
 
 function createCjkDecoder(): TextDecoder {
   for (const label of ["gb18030", "gbk", "cp936"]) {
@@ -50,7 +51,12 @@ function isValidUtf8(bytes: Uint8Array): boolean {
   return true;
 }
 
-export function decodeTextBytes(bytes: Uint8Array, utf8: boolean, codePage: string): string {
+export function decodeTextBytes(
+  bytes: Uint8Array,
+  utf8: boolean,
+  codePage: string,
+  chineseMode = false,
+): string {
   if (bytes.length === 0) return "";
 
   const cp = codePage.toLowerCase();
@@ -59,16 +65,28 @@ export function decodeTextBytes(bytes: Uint8Array, utf8: boolean, codePage: stri
     return UTF8_DECODER.decode(bytes);
   }
 
-  // Modern POS often sends UTF-8 without FS &
+  const isCjkPage =
+    cp === "gbk" || cp === "cp936" || cp === "gb18030" || cp.includes("936");
+
+  // FS & active — GBK bytes may look like valid UTF-8 (e.g. 税 = 0xCB 0xB0)
+  if (chineseMode) {
+    return CJK_DECODER.decode(bytes);
+  }
+
+  if (isCjkPage || cp === "cp437" || cp === "cp850" || cp === "cp860") {
+    if (isValidUtf8(bytes)) {
+      return UTF8_DECODER.decode(bytes);
+    }
+    if (cp === "cp437") return decodeCp437(bytes);
+    if (cp === "cp850") return decodeCp850(bytes);
+    if (cp === "cp860") return decodeCp860(bytes);
+    return CJK_DECODER.decode(bytes);
+  }
+
   if (isValidUtf8(bytes)) {
     return UTF8_DECODER.decode(bytes);
   }
 
-  if (cp === "cp437" || cp === "cp850" || cp === "cp860") {
-    return LATIN_DECODER.decode(bytes);
-  }
-
-  // Chinese / East Asian default
   return CJK_DECODER.decode(bytes);
 }
 

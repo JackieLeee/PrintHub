@@ -1,4 +1,6 @@
 import type { StoredJob } from "../App";
+import { payloadHasRaster } from "@virt-printer/escpos";
+import { formatLabelSize, isTsplPayload, parseTspl } from "@virt-printer/tspl";
 import { useLocale } from "../i18n/context";
 import type { Locale } from "../i18n/types";
 
@@ -39,12 +41,13 @@ export function PrintHistory({ jobs, selectedId, onSelect }: Props) {
   const { t, locale, format } = useLocale();
 
   function jobTitle(job: StoredJob): string {
-    if (job.protocol === "tspl") {
-      return job.labelSize
-        ? format(t.history.labelWithSize, { size: job.labelSize })
-        : t.history.label;
+    if (job.protocol === "tspl" || isTsplPayload(job.payload)) {
+      const size = formatLabelSize(parseTspl(job.payload).commands) ?? job.labelSize;
+      return size ? format(t.history.labelWithSize, { size }) : t.history.label;
     }
-    if (job.byteLength >= 4096) return t.history.receiptWithImage;
+    if (job.protocol === "escpos" && payloadHasRaster(job.payload)) {
+      return t.history.receiptWithImage;
+    }
     return t.history.receipt;
   }
 
@@ -68,7 +71,9 @@ export function PrintHistory({ jobs, selectedId, onSelect }: Props) {
             onClick={() => onSelect(job.id)}
           >
             <div className="history-head">
-              <span className={`tag ${job.protocol}`}>{job.protocol.toUpperCase()}</span>
+              <span className={`tag ${job.protocol === "tspl" || isTsplPayload(job.payload) ? "tspl" : job.protocol}`}>
+                {(job.protocol === "tspl" || isTsplPayload(job.payload) ? "tspl" : job.protocol).toUpperCase()}
+              </span>
               <span className="history-time">{formatTime(job.receivedAt, locale)}</span>
             </div>
             <div className="history-title">{jobTitle(job)}</div>

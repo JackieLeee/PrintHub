@@ -18,7 +18,20 @@ export type {
 export { defaultParserState } from "./types.js";
 export { parseEscPos, readUint16LE } from "./parser.js";
 export { parseEscPosInspector, bytesToHex as inspectorBytesToHex } from "./inspector/parser.js";
-export { isEscPosStatusOrHeartbeat, isMeaningfulPrintJob } from "./heartbeat.js";
+export { isEscPosStatusOrHeartbeat, isMeaningfulPrintJob, buildDleEotResponses } from "./heartbeat.js";
+export { isBlankBitmap, payloadHasRaster } from "./raster-detect.js";
+export {
+  PAPER_WIDTH_58MM,
+  PAPER_WIDTH_80MM,
+  COLS_58MM,
+  COLS_80MM,
+  receiptCellCount,
+  isWideChar,
+  inferPaperWidthFromCommands,
+  estimatePaperWidthFromRaster,
+  dotsPerColumn,
+  columnsForPaperWidth,
+} from "./paper-width.js";
 export {
   codePageName,
   decodeTextBytes,

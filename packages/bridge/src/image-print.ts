@@ -44,7 +44,7 @@ function tsplLabel(widthDots: number, heightDots: number, bitmap: Buffer): Buffe
     `SIZE ${widthMm} mm,${heightMm} mm\r\n` +
     `GAP 2 mm,0\r\n` +
     `CLS\r\n` +
-    `BITMAP 10,10,${widthDots},${heightDots},0,${hex}\r\n` +
+    `BITMAP 10,10,${widthBytes},${heightDots},0,${hex}\r\n` +
     `PRINT 1\r\n`;
   return Buffer.from(body, "utf8");
 }

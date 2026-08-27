@@ -66,6 +66,8 @@ export interface ParserState {
   font: "a" | "b";
   codePage: string;
   utf8: boolean;
+  /** Set by FS & — force GBK decode (skip UTF-8 auto-detection). */
+  chineseMode: boolean;
 }
 
 export function defaultParserState(): ParserState {
@@ -79,5 +81,6 @@ export function defaultParserState(): ParserState {
     font: "a",
     codePage: "gbk",
     utf8: false,
+    chineseMode: false,
   };
 }

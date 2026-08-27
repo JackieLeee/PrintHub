@@ -1,6 +1,11 @@
 import { useLocale } from "../i18n/context.js";
 import type { Locale } from "../i18n/types.js";
 
+const LOCALE_FLAGS: Record<Locale, string> = {
+  en: "🇺🇸",
+  zh: "🇨🇳",
+};
+
 function GlobeIcon() {
   return (
     <svg
@@ -34,8 +39,8 @@ export function LanguageSwitcher() {
         aria-label={t.lang.label}
         onChange={(e) => setLocale(e.target.value as Locale)}
       >
-        <option value="en">{t.lang.en}</option>
-        <option value="zh">{t.lang.zh}</option>
+        <option value="en">{LOCALE_FLAGS.en} {t.lang.en}</option>
+        <option value="zh">{LOCALE_FLAGS.zh} {t.lang.zh}</option>
       </select>
     </label>
   );
