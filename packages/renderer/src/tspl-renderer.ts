@@ -1,11 +1,18 @@
 import type { TsplCommand, TsplLabelMeta } from "@virt-printer/tspl";
 import { resolveTsplLabelMeta, tsplBitmapForPreview } from "@virt-printer/tspl";
-import { drawQrPreview, drawTsplBarcodePreview } from "./barcode.js";
+import { drawQrMatrix, drawTsplBarcodePreview } from "./barcode.js";
+import type { QrEcLevel } from "./qr-encode.js";
 import { drawTscText, tscTextHeightDots, tscTextWidthDots } from "./tsc-font.js";
 import type { RenderOptions } from "./types.js";
 import { drawRasterBitmap } from "./raster.js";
 
 const PREVIEW_SCALE = 1; // 1 canvas px = 1 dot
+
+function tsplQrEcLevel(ec: string): QrEcLevel {
+  const level = ec.toUpperCase().charAt(0);
+  if (level === "L" || level === "M" || level === "Q" || level === "H") return level;
+  return "M";
+}
 
 const META_KINDS = new Set<TsplCommand["kind"]>([
   "size",
@@ -167,8 +174,15 @@ function drawTsplCommand(
   if (cmd.kind === "qrcode") {
     const qx = ox + cmd.x * PREVIEW_SCALE;
     const qy = oy + cmd.y * PREVIEW_SCALE;
-    const dim = cmd.cellWidth * 8 + 16;
-    drawQrPreview(ctx, qx, qy, dim, cmd.data, fg);
+    drawQrMatrix(
+      ctx,
+      qx,
+      qy,
+      cmd.data,
+      Math.max(1, cmd.cellWidth),
+      tsplQrEcLevel(cmd.ecLevel),
+      fg,
+    );
     return;
   }
 
