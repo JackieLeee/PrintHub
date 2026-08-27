@@ -5,11 +5,14 @@ import type { IncomingMessage } from "node:http";
 import type { Server as HttpServer } from "node:http";
 import { WebSocketServer, WebSocket } from "ws";
 import { buildDleEotResponses, isMeaningfulPrintJob, prepareTcpPrintPayload } from "./job-filter.js";
+import { PrinterSimState } from "./printer-sim.js";
 import type {
   BridgeMessage,
   DeviceConnection,
   HubStatus,
   PrintJobMeta,
+  PrinterSimConfig,
+  PrinterSimEvent,
   Protocol,
   WsClientInfo,
 } from "@virt-printer/shared";
@@ -72,6 +75,7 @@ export class VirtPrinterBridge {
   private pingTimer: ReturnType<typeof setInterval> | null = null;
   private mdns: MdnsHandle | null = null;
   private webRoot: string | null = null;
+  private printerSim = new PrinterSimState();
 
   constructor(options: BridgeOptions = {}) {
     this.hubInstanceId = randomUUID();
@@ -129,6 +133,22 @@ export class VirtPrinterBridge {
     return this.getStatus();
   }
 
+  getPrinterSimConfig(): PrinterSimConfig {
+    return this.printerSim.getConfig();
+  }
+
+  setPrinterSimConfig(partial: Partial<PrinterSimConfig>): PrinterSimConfig {
+    const config = this.printerSim.setConfig(partial);
+    this.broadcastStatus();
+    return config;
+  }
+
+  kickCashDrawer(pin = 0, sourceIp = "ui"): PrinterSimEvent | null {
+    const event = this.printerSim.recordCashDrawer(sourceIp, pin, 60, 120, true);
+    if (event) this.broadcast({ type: "sim.event", event });
+    return event;
+  }
+
   async ingestImage(
     image: Buffer,
     opts: ImagePrintOptions & { sourceIp: string },
@@ -157,6 +177,14 @@ export class VirtPrinterBridge {
       lastActivityAt: Date.now(),
       label: `HTTP ${sourceIp}`,
     };
+    this.printerSim.scanPayloadForDrawer(payload, sourceIp).forEach((event) => {
+      this.broadcast({ type: "sim.event", event });
+    });
+    if (this.printerSim.shouldRejectPrint()) {
+      const rejected = this.printerSim.recordJobRejected(sourceIp, payload.length);
+      if (rejected) this.broadcast({ type: "sim.event", event: rejected });
+      throw new Error("print rejected by printer simulation");
+    }
     return this.emitJob(connection, payload, "raw");
   }
 
@@ -251,6 +279,14 @@ export class VirtPrinterBridge {
       if (!prepared) return;
       const payload = Buffer.from(prepared);
       const protocol = detectProtocol(payload);
+      this.printerSim.scanPayloadForDrawer(prepared, remoteIp).forEach((event) => {
+        this.broadcast({ type: "sim.event", event });
+      });
+      if (this.printerSim.shouldRejectPrint()) {
+        const rejected = this.printerSim.recordJobRejected(remoteIp, prepared.length);
+        if (rejected) this.broadcast({ type: "sim.event", event: rejected });
+        return;
+      }
       if (isMeaningfulPrintJob(prepared, protocol)) {
         this.emitJob(connection, payload, "tcp");
       }
@@ -274,9 +310,23 @@ export class VirtPrinterBridge {
       chunks.push(chunk);
       connection.protocol = detectProtocol(Buffer.concat(chunks));
 
-      // Reply to DLE EOT status polls so POS software stays connected
-      for (const statusByte of buildDleEotResponses(chunk)) {
-        socket.write(statusByte);
+      const simConfig = this.printerSim.getConfig();
+      const responses = buildDleEotResponses(chunk, simConfig);
+      if (responses.length > 0 && !this.printerSim.isOffline()) {
+        const delay = this.printerSim.statusDelayMs();
+        const writeResponses = () => {
+          for (let i = 0; i + 2 < chunk.length; i++) {
+            if (chunk[i] === 0x10 && chunk[i + 1] === 0x04 && chunk[i + 2]! >= 1 && chunk[i + 2]! <= 4) {
+              const ev = this.printerSim.recordStatusPoll(remoteIp, chunk[i + 2]!);
+              if (ev) this.broadcast({ type: "sim.event", event: ev });
+            }
+          }
+          for (const statusByte of responses) {
+            socket.write(statusByte);
+          }
+        };
+        if (delay > 0) setTimeout(writeResponses, delay);
+        else writeResponses();
       }
 
       scheduleFlush();
@@ -345,6 +395,8 @@ export class VirtPrinterBridge {
       listening: true,
       connections: [...this.connections.values()],
       wsClients: [...this.wsClients.values()].map((c) => c.info),
+      printerSim: this.printerSim.getConfig(),
+      simEvents: this.printerSim.getEvents(),
     };
   }
 

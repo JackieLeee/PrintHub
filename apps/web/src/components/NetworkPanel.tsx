@@ -14,7 +14,6 @@ interface Props {
   onConnectBridge: () => void;
   onReconnect: () => void;
 }
-
 interface GroupedConnection {
   key: string;
   ip: string;
@@ -69,8 +68,7 @@ export function NetworkPanel({
   onBridgeInputChange,
   onConnectBridge,
   onReconnect,
-}: Props) {
-  const { t, format } = useLocale();
+}: Props) {  const { t, format } = useLocale();
   const hostIp = status?.hostIp ?? "—";
   const tcpPort = status?.tcpPort ?? DEFAULT_TCP_PORT;
   const wsPort = status?.wsPort ?? DEFAULT_WS_PORT;
@@ -161,6 +159,5 @@ export function NetworkPanel({
       <div className="network-foot">
         {t.network.wsLabel}: {wsUrl}
       </div>
-    </div>
-  );
+    </div>  );
 }

@@ -114,14 +114,30 @@ body {
   min-width: 0;
 }
 
+.history-sidebar-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+  flex-shrink: 0;
+}
+
 .history-sidebar h2 {
-  margin: 0 0 10px;
+  margin: 0;
   font-size: 14px;
   font-weight: 600;
   color: var(--muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  flex-shrink: 0;
+}
+
+.history-count {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .history-sidebar .history-list {
@@ -344,6 +360,61 @@ button:hover {
   margin: 0 0 12px;
   font-size: 13px;
   color: var(--muted);
+}
+
+.debug-panel-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 1px minmax(420px, 1fr);
+  gap: 0 20px;
+  align-items: start;
+}
+
+/* 命令手册展开时，右侧模拟事件列表随左侧一起拉伸 */
+.debug-panel-split.cmd-ref-open {
+  align-items: stretch;
+}
+
+.debug-panel-main {
+  min-width: 0;
+}
+
+.debug-panel-divider {
+  width: 1px;
+  align-self: stretch;
+  background: var(--border);
+}
+
+.debug-panel-split.cmd-ref-open .debug-panel-divider {
+  min-height: 280px;
+}
+
+.debug-panel-sim {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.debug-panel-split.cmd-ref-open .debug-panel-sim {
+  min-height: 280px;
+}
+
+.debug-panel-split.cmd-ref-open .debug-panel-sim .printer-sim-panel {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+}
+
+@media (max-width: 900px) {
+  .debug-panel-split {
+    grid-template-columns: 1fr;
+    gap: 16px 0;
+  }
+
+  .debug-panel-divider {
+    width: 100%;
+    height: 1px;
+    min-height: 0;
+  }
 }
 
 .main-split {
@@ -863,6 +934,468 @@ code {
   font-size: 13px;
   color: var(--muted);
   padding: 12px 0;
+}
+
+.printer-sim-panel {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+}
+
+.printer-sim-header,
+.printer-sim-scenarios,
+.printer-sim-field,
+.cash-drawer-unit,
+.sim-error {
+  flex-shrink: 0;
+}
+
+.sim-events {
+  flex: 0 0 auto;
+  max-height: 200px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.debug-panel-split.cmd-ref-open .sim-events {
+  flex: 1 1 auto;
+  max-height: none;
+  min-height: 80px;
+}
+
+.printer-sim-header h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.printer-sim-hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.printer-sim-offline {
+  display: block;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--warn);
+}
+
+.printer-sim-scenarios {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.printer-sim-scenario-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.printer-sim-field-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.status-led {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--muted);
+}
+
+.sim-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.sim-status-badge--green .status-led {
+  background: var(--ok);
+}
+
+.sim-status-badge--yellow .status-led {
+  background: var(--warn);
+}
+
+.sim-status-badge--red .status-led {
+  background: var(--err);
+}
+
+.sim-status-badge--green {
+  color: var(--ok);
+}
+
+.sim-status-badge--yellow {
+  color: var(--warn);
+}
+
+.sim-status-badge--red {
+  color: var(--err);
+}
+
+.sim-scenario-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sim-scenario-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.sim-scenario-btn:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+}
+
+.sim-scenario-btn.active {
+  font-weight: 500;
+}
+
+.sim-scenario-btn.active[data-signal="green"] {
+  border-color: color-mix(in srgb, var(--ok) 55%, var(--border));
+  color: var(--ok);
+  background: color-mix(in srgb, var(--ok) 10%, var(--surface2));
+}
+
+.sim-scenario-btn.active[data-signal="green"] .status-led {
+  background: var(--ok);
+}
+
+.sim-scenario-btn.active[data-signal="yellow"] {
+  border-color: color-mix(in srgb, var(--warn) 55%, var(--border));
+  color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 10%, var(--surface2));
+}
+
+.sim-scenario-btn.active[data-signal="yellow"] .status-led {
+  background: var(--warn);
+}
+
+.sim-scenario-btn.active[data-signal="red"] {
+  border-color: color-mix(in srgb, var(--err) 55%, var(--border));
+  color: var(--err);
+  background: color-mix(in srgb, var(--err) 10%, var(--surface2));
+}
+
+.sim-scenario-btn.active[data-signal="red"] .status-led {
+  background: var(--err);
+}
+
+.sim-scenario-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.raw-local-hint {
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.printer-sim-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.printer-sim-field input[type="range"] {
+  width: 100%;
+}
+
+.printer-sim-delay-value {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* Cash drawer — compact pull-out tray */
+.cash-drawer-unit {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: var(--surface2);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.cash-drawer-visual {
+  display: flex;
+  justify-content: center;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.cash-drawer-printer {
+  width: 108px;
+  position: relative;
+}
+
+.cash-drawer-printer-face {
+  height: 12px;
+  margin: 0 8px;
+  border-radius: 3px 3px 0 0;
+  border: 1px solid var(--border);
+  border-bottom: none;
+  background: color-mix(in srgb, var(--surface) 80%, var(--border));
+}
+
+.cash-drawer-assembly {
+  position: relative;
+  height: 32px;
+  margin: 0 4px;
+  overflow: visible;
+}
+
+.cash-drawer-housing {
+  position: relative;
+  z-index: 1;
+  height: 12px;
+  border-radius: 0 0 3px 3px;
+  border: 1px solid var(--border);
+  background: transparent;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.cash-drawer-cavity {
+  position: absolute;
+  inset: 2px 6px 0;
+  border-radius: 2px 2px 0 0;
+  background: color-mix(in srgb, var(--bg) 70%, var(--text));
+  border: 1px solid color-mix(in srgb, var(--border) 80%, var(--text));
+  border-bottom: none;
+}
+
+.cash-drawer-tray {
+  position: absolute;
+  z-index: 2;
+  left: 8px;
+  right: 8px;
+  top: 3px;
+  display: flex;
+  flex-direction: column;
+  transform: translateY(6px);
+  transition: transform 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.cash-drawer-tray.open {
+  transform: translateY(9px);
+}
+
+.cash-drawer-tray-body {
+  height: 0;
+  overflow: hidden;
+  opacity: 0;
+  border-radius: 2px 2px 0 0;
+  border: 1px solid transparent;
+  border-bottom: none;
+  background: color-mix(in srgb, var(--surface2) 92%, var(--text));
+  transition:
+    height 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.22s ease,
+    border-color 0.22s ease;
+}
+
+.cash-drawer-tray.open .cash-drawer-tray-body {
+  height: 16px;
+  opacity: 1;
+  border-color: color-mix(in srgb, var(--border) 80%, var(--text));
+}
+
+.cash-drawer-tray-lip {
+  height: 8px;
+  border-radius: 0 0 2px 2px;
+  border: 1px solid color-mix(in srgb, var(--border) 70%, var(--text));
+  background: color-mix(in srgb, var(--surface2) 85%, var(--text));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cash-drawer-handle {
+  width: 18px;
+  height: 3px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--muted) 55%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--border) 60%, var(--text));
+}
+
+.cash-drawer-tray-inner {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  padding: 3px 4px 2px;
+  height: 16px;
+}
+
+.cash-drawer-tray:not(.open) .cash-drawer-tray-inner {
+  visibility: hidden;
+}
+
+.cash-drawer-bill {
+  flex: 1;
+  height: 10px;
+  max-width: 16px;
+  border-radius: 1px;
+  border: 1px solid color-mix(in srgb, var(--ok) 35%, var(--border));
+  background: color-mix(in srgb, var(--ok) 18%, var(--surface2));
+}
+
+.cash-drawer-coin {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--warn) 40%, var(--border));
+  background: color-mix(in srgb, var(--warn) 22%, var(--surface2));
+  margin-bottom: 1px;
+}
+
+.cash-drawer-unit.open .cash-drawer-housing {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+}
+
+.cash-drawer-unit.open .cash-drawer-tray-lip {
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
+}
+
+.cash-drawer-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.cash-drawer-label {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.cash-drawer-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.sim-events-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+  flex-shrink: 0;
+}
+
+.sim-events-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.sim-events-count {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.sim-events-empty {
+  font-size: 12px;
+  color: var(--muted);
+  padding: 8px 0;
+}
+
+.sim-events-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-height: 0;
+  max-height: 168px;
+  overflow-y: auto;
+}
+
+.debug-panel-split.cmd-ref-open .sim-events-list {
+  max-height: none;
+}
+
+.sim-event {
+  display: grid;
+  grid-template-columns: auto auto 1fr auto;
+  gap: 8px;
+  align-items: baseline;
+  font-size: 11px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: var(--surface2);
+}
+
+.sim-event-time {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.sim-event-kind {
+  font-weight: 500;
+  color: var(--accent);
+}
+
+.sim-event-detail {
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sim-event-ip {
+  color: var(--muted);
+}
+
+.sim-error {
+  margin: 0;
+  font-size: 12px;
+  color: var(--warn);
 }
 
 .history-list {

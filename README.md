@@ -19,14 +19,48 @@ Cash registers, POS apps, and label printers usually send **raw ESC/POS or TSPL*
 | Capability | Description |
 |------------|-------------|
 | **Receive** | ESC/POS receipts and TSPL labels on TCP **9100** |
-| **Preview** | Canvas receipt/label preview — ESC/POS (text, images, Code128, QR) and TSPL labels |
-| **History** | Recent jobs stored in the browser; replay and export (file / hex / Base64) |
-| **Debug** | One-click ESC/POS & TSPL samples; File / Hex / Base64 raw print |
+| **Preview** | Canvas receipt/label preview — ESC/POS (text, images, Code128, QR, invert, cash-drawer markers) and TSPL labels |
+| **History** | Recent jobs stored in the browser (last **50**); replay and export (file / hex / Base64); total count in sidebar |
+| **Debug** | One-click ESC/POS & TSPL samples; File / Hex / Base64 raw submit — **works offline** (local preview without Bridge) |
+| **Command reference** | Collapsible ESC/POS & TSPL command manuals in the debug panel |
+| **Printer sim** | Scenario simulation (normal, paper-out, cover-open, offline, slow, reject-job), DLE EOT status bytes, cash-drawer kick detection, live event log (last **50**) |
 
 | Port | Role |
 |------|------|
 | **9100** | TCP — print data from POS or test tools |
 | **8081** | HTTP + WebSocket + embedded Web UI |
+
+### Printer simulation
+
+In **Debug print**, the right panel simulates printer behavior for integration testing:
+
+| Scenario | Behavior |
+|----------|----------|
+| **Normal** | Standard DLE EOT status responses |
+| **Paper out** | Paper-out status bits on polls |
+| **Cover open** | Cover-open status bit |
+| **Offline** | Zero status bytes |
+| **Slow** | Configurable status response delay |
+| **Reject job** | Drops incoming TCP print jobs |
+
+- **Traffic-light indicators** — green / yellow / red for scenario and cash-drawer state
+- **Cash drawer** — compact pull-out UI; manual open/close; `ESC p` kicks from print jobs are detected and logged
+- **Sim events** — WebSocket `sim.event` stream; newest first, deduplicated
+
+**Sim HTTP API** (Bridge must be running):
+
+```bash
+# Read / update sim config
+curl http://localhost:8081/sim/config
+curl -X POST http://localhost:8081/sim/config \
+  -H "Content-Type: application/json" \
+  -d '{"scenario":"paper-out"}'
+
+# Manual cash-drawer kick (UI uses this too)
+curl -X POST http://localhost:8081/sim/drawer/kick \
+  -H "Content-Type: application/json" \
+  -d '{"pin":0}'
+```
 
 ## Usage
 
@@ -40,7 +74,8 @@ pnpm dev      # build Web UI + start Bridge
 
 1. Open **http://localhost:8081** (or your machine’s LAN IP).
 2. Point the POS / app at **`<host>:9100`**.
-3. In the UI, try **Print ESC/POS Sample** or **Print TSPL Sample** to verify.
+3. In the UI, expand **Debug print** — try samples, raw submit, command reference, or printer simulation.
+4. Debug preview works **without Bridge**; TCP scenarios and sim config require Bridge on `:8081`.
 
 > **LAN access:** Other devices on the same network should use `http://<bridge-host>:8081`, not `localhost`.
 
@@ -64,7 +99,7 @@ curl -X POST http://localhost:8081/print/raw \
 
 **Monorepo layout**
 
-- `packages/bridge` — TCP listener, HTTP API, WebSocket relay, static UI
+- `packages/bridge` — TCP listener, HTTP API, WebSocket relay, printer sim, static UI
 - `packages/web` — React dashboard
 - `packages/escpos`, `packages/tspl`, `packages/renderer` — parse and render (ESC/POS inspector parser, TSPL label meta, Code128/QR canvas drawing)
 - `packages/shared`, `packages/relay-client` — types and WS client

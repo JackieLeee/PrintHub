@@ -83,6 +83,7 @@ interface RenderState {
   charHeightMul: number;
   bold: boolean;
   underline: boolean;
+  invert: boolean;
   pendingQrData: string;
   pendingQrSize: number;
   pendingQrEc: QrEcLevel;
@@ -226,7 +227,8 @@ function segmentsShareStyle(segments: PendingSegment[]): boolean {
       s.bold === first.bold &&
       s.charWidthMul === first.charWidthMul &&
       s.charHeightMul === first.charHeightMul &&
-      s.underline === first.underline,
+      s.underline === first.underline &&
+      s.invert === first.invert,
   );
 }
 
@@ -323,6 +325,7 @@ interface PendingSegment {
   charHeightMul: number;
   bold: boolean;
   underline: boolean;
+  invert: boolean;
   cellWidthScale: number;
 }
 
@@ -342,6 +345,7 @@ export function buildRenderElements(
     charHeightMul: 1,
     bold: false,
     underline: false,
+    invert: false,
     pendingQrData: "",
     pendingQrSize: 3,
     pendingQrEc: "M",
@@ -406,6 +410,7 @@ export function buildRenderElements(
         charHeightMul: seg.charHeightMul,
         bold: seg.bold,
         underline: seg.underline,
+        invert: seg.invert,
         mergedCommandIds: pendingSegments.map((s) => s.commandId),
       });
     } else {
@@ -432,6 +437,7 @@ export function buildRenderElements(
           charHeightMul: seg.charHeightMul,
           bold: seg.bold,
           underline: seg.underline,
+          invert: seg.invert,
         });
       }
     }
@@ -453,6 +459,7 @@ export function buildRenderElements(
           charHeightMul: state.charHeightMul,
           bold: state.bold,
           underline: state.underline,
+          invert: state.invert,
           cellWidthScale: state.cellWidthScale,
         });
       }
@@ -473,6 +480,7 @@ export function buildRenderElements(
         state.charHeightMul = 1;
         state.bold = false;
         state.underline = false;
+        state.invert = false;
         state.lineSpacingDots = DEFAULT_LINE_SPACING_DOTS;
         state.cellWidthScale = 1;
         state.pendingQrData = "";
@@ -494,6 +502,7 @@ export function buildRenderElements(
       case "style":
         if (command.bold !== undefined) state.bold = command.bold;
         if (command.underline !== undefined) state.underline = command.underline;
+        if (command.invert !== undefined) state.invert = command.invert;
         break;
       case "text":
         appendText((command as TextCommand).text, command.id);
@@ -588,6 +597,20 @@ export function buildRenderElements(
         elements.push({ commandId: command.id, type: "cut", y, height: 24 });
         y += 24;
         break;
+      case "cashDrawer": {
+        const drawerH = 36;
+        elements.push({
+          commandId: command.id,
+          type: "cashDrawer",
+          y,
+          height: drawerH,
+          x: PAPER_INSET,
+          width: paperWidthPx,
+          content: `pin ${command.pin}`,
+        });
+        y += drawerH + 4;
+        break;
+      }
       default:
         break;
     }
@@ -663,6 +686,7 @@ export async function renderReceipt(
     charHeightMul: 1,
     bold: false,
     underline: false,
+    invert: false,
     pendingQrData: "",
     pendingQrSize: 3,
     pendingQrEc: "M",
@@ -688,6 +712,7 @@ export async function renderReceipt(
       case "style":
         if (command.bold !== undefined) state.bold = command.bold;
         if (command.underline !== undefined) state.underline = command.underline;
+        if (command.invert !== undefined) state.invert = command.invert;
         break;
       case "text": {
         const lineElements = elements.filter(
@@ -706,6 +731,7 @@ export async function renderReceipt(
           const charHeightMul = element.charHeightMul ?? state.charHeightMul;
           const bold = element.bold ?? state.bold;
           const underline = element.underline ?? state.underline;
+          const invert = element.invert ?? false;
           if (isHighlighted) {
             ctx.fillStyle = "rgba(255, 214, 102, 0.45)";
             ctx.fillRect(
@@ -715,12 +741,17 @@ export async function renderReceipt(
               element.height + 4,
             );
           }
-          ctx.fillStyle = "#1a1a1a";
           const fontPx = layoutCell * charHeightMul * layoutTuning.fontSizeScale;
           const visualHeight = fontPx;
           const yOffset = Math.max(0, element.height - visualHeight);
           const measuredWidth = measureReceiptLineWidth(content, layoutCell, charWidthMul);
           const drawX = element.x ?? PAPER_INSET;
+          const drawW = element.width ?? measuredWidth;
+          if (invert) {
+            ctx.fillStyle = "#1a1a1a";
+            ctx.fillRect(drawX, element.y + yOffset, drawW, visualHeight);
+          }
+          ctx.fillStyle = invert ? "#f8f8f8" : "#1a1a1a";
           drawReceiptLine(
             ctx,
             content,
@@ -829,6 +860,26 @@ export async function renderReceipt(
             state.pendingQrEc,
           );
         }
+        break;
+      }
+      case "cashDrawer": {
+        const element = elements.find((e) => e.commandId === command.id);
+        if (!element) break;
+        const x = element.x ?? PAPER_INSET;
+        const w = element.width ?? paperWidthPx;
+        const h = element.height;
+        ctx.fillStyle = isHighlighted ? "rgba(255, 214, 102, 0.35)" : "#eceae4";
+        ctx.fillRect(x, element.y, w, h);
+        ctx.strokeStyle = isHighlighted ? "#f5a623" : "#888";
+        ctx.lineWidth = isHighlighted ? 2 : 1;
+        ctx.setLineDash([4, 3]);
+        ctx.strokeRect(x + 6, element.y + 6, w - 12, h - 12);
+        ctx.setLineDash([]);
+        ctx.fillStyle = "#444";
+        ctx.font = '11px "IBM Plex Sans", sans-serif';
+        ctx.textAlign = "center";
+        ctx.fillText("Cash Drawer", x + w / 2, element.y + h / 2 + 4);
+        ctx.textAlign = "left";
         break;
       }
       case "cut": {

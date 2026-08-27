@@ -19,14 +19,48 @@
 | 能力 | 说明 |
 |------|------|
 | **接收** | TCP **9100** 接收 ESC/POS 小票与 TSPL 标签 |
-| **预览** | Canvas 小票/标签预览 — ESC/POS（文本、位图、Code128、QR）与 TSPL 标签 |
-| **历史** | 浏览器本地保存最近任务，支持回放与导出（File / Hex / Base64） |
-| **调试** | 一键 ESC/POS & TSPL Sample；File / Hex / Base64 原始提交 |
+| **预览** | Canvas 小票/标签预览 — ESC/POS（文本、位图、Code128、QR、反白、钱箱标记）与 TSPL 标签 |
+| **历史** | 浏览器本地保存最近 **50** 条任务，支持回放与导出（File / Hex / Base64）；侧栏显示总数 |
+| **调试** | 一键 ESC/POS & TSPL Sample；File / Hex / Base64 原始提交 — **可离线**（无需 Bridge 本地预览） |
+| **命令手册** | 调试面板内可折叠的 ESC/POS & TSPL 命令参考 |
+| **打印机模拟** | 场景模拟（正常、缺纸、开盖、离线、慢响应、拒打）、DLE EOT 状态字节、钱箱脉冲检测、实时事件日志（最近 **50** 条） |
 
 | 端口 | 用途 |
 |------|------|
 | **9100** | TCP — POS 或测试工具发送打印数据 |
 | **8081** | HTTP + WebSocket + 内嵌 Web 控制台 |
+
+### 打印机模拟
+
+在 **调试打印** 右侧面板可模拟打印机行为，便于联调：
+
+| 场景 | 行为 |
+|------|------|
+| **正常** | 标准 DLE EOT 状态响应 |
+| **缺纸** | 状态轮询返回缺纸位 |
+| **开盖** | 状态轮询返回开盖位 |
+| **离线** | 状态字节为 0 |
+| **慢响应** | 可配置状态响应延迟 |
+| **拒打** | 丢弃 TCP 传入的打印任务 |
+
+- **红绿灯指示** — 场景与钱箱状态用绿 / 黄 / 红标识
+- **钱箱** — 紧凑抽屉动画；支持手动开/关；打印数据中的 `ESC p` 开钱箱会被检测并记入事件
+- **模拟事件** — WebSocket `sim.event` 推送；按时间倒序显示，自动去重
+
+**模拟 HTTP API**（需 Bridge 运行）：
+
+```bash
+# 读取 / 更新模拟配置
+curl http://localhost:8081/sim/config
+curl -X POST http://localhost:8081/sim/config \
+  -H "Content-Type: application/json" \
+  -d '{"scenario":"paper-out"}'
+
+# 手动开钱箱（UI 同样调用此接口）
+curl -X POST http://localhost:8081/sim/drawer/kick \
+  -H "Content-Type: application/json" \
+  -d '{"pin":0}'
+```
 
 ## 使用方法
 
@@ -41,7 +75,8 @@ pnpm dev      # 构建 Web UI 并启动 Bridge
 1. 打开 **http://localhost:8081**（或本机局域网 IP，如 `http://192.168.1.42:8081`）。
 2. **同网段其他设备**请直接访问 `http://<Bridge机器IP>:8081`，不要使用 GitHub Pages 演示站。
 3. 将 POS / 应用指向 **`<Bridge机器IP>:9100`**。
-4. 在界面点击 **Print ESC/POS Sample** 或 **Print TSPL Sample** 验证。
+4. 展开 **调试打印** — 可试用 Sample、Raw 提交、命令手册或打印机模拟。
+5. 调试预览 **无需 Bridge**；TCP 场景与模拟配置需 Bridge 在 `:8081` 运行。
 
 > **局域网连不上？** 确认 Bridge 已运行（`pnpm start`）、macOS 防火墙允许 Node 入站，且 POS/Web 使用的是 **Bridge 机器的局域网 IP**，不是 `localhost`。
 
@@ -65,7 +100,7 @@ curl -X POST http://localhost:8081/print/raw \
 
 **Monorepo 结构**
 
-- `packages/bridge` — TCP 监听、HTTP API、WebSocket、静态 UI
+- `packages/bridge` — TCP 监听、HTTP API、WebSocket、打印机模拟、静态 UI
 - `packages/web` — React 控制台
 - `packages/escpos`、`packages/tspl`、`packages/renderer` — 解析与渲染（ESC/POS 命令解析、TSPL 标签元数据、Code128/QR Canvas 绘制）
 - `packages/shared`、`packages/relay-client` — 类型与 WS 客户端

@@ -35,6 +35,7 @@ interface LegacyStyle {
   doubleWidth: boolean;
   doubleHeight: boolean;
   doubleStrike: boolean;
+  invert: boolean;
   font: "a" | "b";
 }
 
@@ -46,6 +47,7 @@ function defaultStyle(): LegacyStyle {
     doubleWidth: false,
     doubleHeight: false,
     doubleStrike: false,
+    invert: false,
     font: "a",
   };
 }
@@ -80,6 +82,7 @@ export function mapInspectorToLegacy(commands: ParsedCommand[]): EscPosCommand[]
         if (cmd.bold !== undefined) style.bold = cmd.bold;
         if (cmd.underline !== undefined) style.underline = cmd.underline;
         if (cmd.doubleStrike !== undefined) style.doubleStrike = cmd.doubleStrike;
+        if (cmd.invert !== undefined) style.invert = cmd.invert;
         break;
       case "text": {
         let text = cmd.text;
@@ -95,12 +98,21 @@ export function mapInspectorToLegacy(commands: ParsedCommand[]): EscPosCommand[]
             doubleWidth: style.doubleWidth,
             doubleHeight: style.doubleHeight,
             doubleStrike: style.doubleStrike,
+            invert: style.invert,
             font: style.font,
           });
         }
         if (endsWithLf) out.push({ kind: "line" });
         break;
       }
+      case "cashDrawer":
+        out.push({
+          kind: "cashDrawer",
+          pin: cmd.pin,
+          pulseOn: cmd.pulseOn,
+          pulseOff: cmd.pulseOff,
+        });
+        break;
       case "lineFeed":
         out.push({ kind: "line" });
         break;

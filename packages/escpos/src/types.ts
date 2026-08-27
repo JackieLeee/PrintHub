@@ -9,6 +9,7 @@ export type EscPosCommand =
       doubleWidth?: boolean;
       doubleHeight?: boolean;
       doubleStrike?: boolean;
+      invert?: boolean;
       font?: "a" | "b";
       align?: TextAlign;
       codePage?: string;

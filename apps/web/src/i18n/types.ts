@@ -37,10 +37,32 @@ export interface Translations {
     bridgePlaceholder: string;
     bridgeConnect: string;
   };
+  sim: {
+    title: string;
+    hint: string;
+    scenario: string;
+    statusDelay: string;
+    openDrawer: string;
+    closeDrawer: string;
+    drawerOpen: string;
+    drawerClosed: string;
+    events: string;
+    eventsEmpty: string;
+    bridgeRequired: string;
+    scenarios: Record<
+      "normal" | "paper-out" | "cover-open" | "offline" | "slow" | "reject-job",
+      string
+    >;
+    eventKinds: Record<
+      "status-poll" | "cash-drawer" | "job-rejected" | "scenario-change" | "manual-drawer",
+      string
+    >;
+  };
   history: {
     empty: string;
     emptyHint: string;
     railEmptyHint: string;
+    totalCount: string;
     receipt: string;
     receiptWithImage: string;
     label: string;
@@ -59,8 +81,8 @@ export interface Translations {
     resetView: string;
   };
   samples: {
-    printEscPos: string;
-    printTspl: string;
+    previewEscPos: string;
+    previewTspl: string;
     printing: string;
   };
   export: {
@@ -83,16 +105,17 @@ export interface Translations {
     tabEscpos: string;
     pickFile: string;
     submitting: string;
-    decodePrint: string;
-    tsplPrint: string;
-    escposPrint: string;
+    decodePreview: string;
+    tsplPreview: string;
+    escposPreview: string;
+    localHint: string;
     hexPlaceholder: string;
     base64Placeholder: string;
     tsplPlaceholder: string;
     escposPlaceholder: string;
     escposHint: string;
-    submitted: string;
-    submitFailed: string;
+    previewed: string;
+    previewFailed: string;
     fileParseFailed: string;
     decodeFailed: string;
   };

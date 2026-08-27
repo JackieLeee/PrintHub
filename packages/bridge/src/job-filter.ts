@@ -1,4 +1,5 @@
-import type { Protocol } from "@virt-printer/shared";
+import type { Protocol, PrinterSimConfig, PrinterSimScenario } from "@virt-printer/shared";
+import { dleEotStatusByte } from "./printer-sim.js";
 
 /** Strip ESC/POS status / poll sequences, returning bytes that may be print content. */
 function stripEscPosStatusSequences(payload: Uint8Array): Uint8Array {
@@ -64,21 +65,13 @@ function isEscPosStatusOrHeartbeat(payload: Uint8Array): boolean {
   return true;
 }
 
-function dleEotStatusByte(n: number): Uint8Array {
-  switch (n) {
-    case 1:
-    case 2:
-      return new Uint8Array([0x12]);
-    case 3:
-    case 4:
-      return new Uint8Array([0x00]);
-    default:
-      return new Uint8Array([0x12]);
-  }
-}
-
 /** Build printer status bytes for each DLE EOT n found in a TCP chunk. */
-export function buildDleEotResponses(payload: Uint8Array): Uint8Array[] {
+export function buildDleEotResponses(
+  payload: Uint8Array,
+  config?: PrinterSimConfig,
+): Uint8Array[] {
+  if (config?.scenario === "offline") return [];
+  const scenario: PrinterSimScenario = config?.scenario ?? "normal";
   const responses: Uint8Array[] = [];
   for (let i = 0; i + 2 < payload.length; i++) {
     if (
@@ -87,7 +80,8 @@ export function buildDleEotResponses(payload: Uint8Array): Uint8Array[] {
       payload[i + 2]! >= 0x01 &&
       payload[i + 2]! <= 0x04
     ) {
-      responses.push(dleEotStatusByte(payload[i + 2]!));
+      const n = payload[i + 2]!;
+      responses.push(new Uint8Array([dleEotStatusByte(n, scenario)]));
       i += 2;
     }
   }

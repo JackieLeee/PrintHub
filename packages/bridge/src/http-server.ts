@@ -72,11 +72,40 @@ export function startHttpServer(options: HttpServerOptions): Server {
       return;
     }
 
+    if (req.method === "GET" && url.pathname === "/sim/config") {
+      sendJson(res, 200, bridge.getPrinterSimConfig());
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/sim/config") {
+      try {
+        const raw = await readBody(req, 64 * 1024);
+        const json = JSON.parse(raw.toString("utf8")) as Partial<import("@virt-printer/shared").PrinterSimConfig>;
+        const config = bridge.setPrinterSimConfig(json);
+        sendJson(res, 200, config);
+      } catch (err) {
+        sendJson(res, 400, { error: err instanceof Error ? err.message : "invalid config" });
+      }
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/sim/drawer/kick") {
+      try {
+        const raw = await readBody(req, 4096);
+        const json = raw.length > 0 ? (JSON.parse(raw.toString("utf8")) as { pin?: number }) : {};
+        const event = bridge.kickCashDrawer(json.pin ?? 0);
+        sendJson(res, 200, { ok: true, event });
+      } catch (err) {
+        sendJson(res, 400, { error: err instanceof Error ? err.message : "kick failed" });
+      }
+      return;
+    }
+
     if (req.method === "GET" && url.pathname === "/" && !webRoot) {
       sendJson(res, 503, {
         error: "web ui not built",
         hint: "Run from repo root: pnpm install && pnpm start",
-        api: ["/health", "/status", "/print/raw"],
+        api: ["/health", "/status", "/print/raw", "/sim/config", "/sim/drawer/kick"],
       });
       return;
     }

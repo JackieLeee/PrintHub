@@ -15,6 +15,8 @@ import type {
   BarcodeCommand,
   BaseCommand,
   CommandCategory,
+  CashDrawerCommand,
+  CodePageCommand,
   CutCommand,
   FeedCommand,
   FontCommand,
@@ -39,6 +41,7 @@ interface ParserState {
   bold: boolean;
   underline: boolean;
   doubleStrike: boolean;
+  invert: boolean;
   alignment: "left" | "center" | "right";
   utf8: boolean;
   codePage: string;
@@ -105,6 +108,7 @@ export function parseEscPosInspector(data: Uint8Array, paperWidth = 384): ParseR
     bold: false,
     underline: false,
     doubleStrike: false,
+    invert: false,
     alignment: "left",
     utf8: false,
     codePage: "cp936",
@@ -151,6 +155,7 @@ export function parseEscPosInspector(data: Uint8Array, paperWidth = 384): ParseR
         state.bold = false;
         state.underline = false;
         state.doubleStrike = false;
+        state.invert = false;
         state.alignment = "left";
         state.utf8 = false;
         state.codePage = "cp936";
@@ -486,11 +491,48 @@ export function parseEscPosInspector(data: Uint8Array, paperWidth = 384): ParseR
         continue;
       }
 
+      if (next === 0x70 && index + 4 < data.length) {
+        const pin = data[index + 2]!;
+        const pulseOn = data[index + 3]!;
+        const pulseOff = data[index + 4]!;
+        index += 5;
+        push({
+          ...baseCommand(
+            commandIndex,
+            "cashDrawer",
+            "Cash Drawer",
+            `ESC p ; pin=${pin}, t1=${pulseOn}, t2=${pulseOff}`,
+            start,
+            index,
+            data,
+          ),
+          pin,
+          pulseOn,
+          pulseOff,
+        } as CashDrawerCommand);
+        continue;
+      }
+
       if (next === 0x74 && index + 2 < data.length) {
         const code = data[index + 2]!;
-        state.codePage = codePageName(code);
+        const pageName = codePageName(code);
+        state.codePage = pageName;
         state.utf8 = code === 255;
         index += 3;
+        push({
+          ...baseCommand(
+            commandIndex,
+            "codePage",
+            "Code Page",
+            `ESC t ; ${pageName} (n=${code})`,
+            start,
+            index,
+            data,
+            false,
+          ),
+          code,
+          pageName,
+        } as CodePageCommand);
         continue;
       }
 
@@ -618,6 +660,26 @@ export function parseEscPosInspector(data: Uint8Array, paperWidth = 384): ParseR
           underline: state.underline,
           cellWidthScale: state.cellWidthScale,
         } as FontCommand);
+        continue;
+      }
+
+      if (next === 0x42 && index + 2 < data.length) {
+        const n = data[index + 2]!;
+        state.invert = n === 1 || n === 0x31;
+        index += 3;
+        push({
+          ...baseCommand(
+            commandIndex,
+            "style",
+            "Invert Print",
+            state.invert ? "GS B ; inverted (white on black)" : "GS B ; normal",
+            start,
+            index,
+            data,
+            false,
+          ),
+          invert: state.invert,
+        } as StyleCommand);
         continue;
       }
 

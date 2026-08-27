@@ -12,6 +12,8 @@ export type CommandCategory =
   | "rasterImage"
   | "qrCode"
   | "barcode"
+  | "cashDrawer"
+  | "codePage"
   | "unsupported"
   | "raw";
 
@@ -51,6 +53,7 @@ export interface StyleCommand extends BaseCommand {
   bold?: boolean;
   underline?: boolean;
   doubleStrike?: boolean;
+  invert?: boolean;
 }
 
 export interface FeedCommand extends BaseCommand {
@@ -104,6 +107,19 @@ export interface BarcodeCommand extends BaseCommand {
   position: string;
 }
 
+export interface CashDrawerCommand extends BaseCommand {
+  category: "cashDrawer";
+  pin: number;
+  pulseOn: number;
+  pulseOff: number;
+}
+
+export interface CodePageCommand extends BaseCommand {
+  category: "codePage";
+  code: number;
+  pageName: string;
+}
+
 export interface UnsupportedCommand extends BaseCommand {
   category: "unsupported";
   reason: string;
@@ -122,6 +138,8 @@ export type ParsedCommand =
   | ImageCommand
   | QrCodeCommand
   | BarcodeCommand
+  | CashDrawerCommand
+  | CodePageCommand
   | UnsupportedCommand;
 
 export interface ParseResult {
@@ -132,7 +150,7 @@ export interface ParseResult {
 
 export interface RenderElement {
   commandId: string;
-  type: "text" | "image" | "barcode" | "qr" | "feed" | "cut" | "spacer";
+  type: "text" | "image" | "barcode" | "qr" | "feed" | "cut" | "spacer" | "cashDrawer";
   y: number;
   height: number;
   x?: number;
@@ -145,6 +163,7 @@ export interface RenderElement {
   charHeightMul?: number;
   bold?: boolean;
   underline?: boolean;
+  invert?: boolean;
   /** Right edge anchored at render time via measureText (mixed-style lines). */
   anchorRight?: boolean;
   /** All ESC/POS text commands merged into this element (same logical line). */

@@ -1,3 +1,15 @@
+import type { PrinterSimConfig, PrinterSimEvent } from "./printer-sim.js";
+
+export type {
+  PrinterSimScenario,
+  PrinterSimEventKind,
+  PrinterSimConfig,
+  PrinterSimEvent,
+} from "./printer-sim.js";
+export { DEFAULT_PRINTER_SIM_CONFIG, MAX_SIM_EVENTS } from "./printer-sim.js";
+export type { CashDrawerKick } from "./cash-drawer.js";
+export { findCashDrawerKicks } from "./cash-drawer.js";
+
 export type Protocol = "escpos" | "tspl";
 
 export interface DeviceConnection {
@@ -94,6 +106,8 @@ export interface HubStatus {
   listening: boolean;
   connections: DeviceConnection[];
   wsClients: WsClientInfo[];
+  printerSim: PrinterSimConfig;
+  simEvents: PrinterSimEvent[];
 }
 
 export function normalizeHostIp(ip: string): string {
@@ -112,13 +126,14 @@ export type BridgeMessage =
   | { type: "connection.open"; connection: DeviceConnection }
   | { type: "connection.close"; sessionId: string }
   | { type: "ws.open"; client: WsClientInfo }
-  | { type: "ws.close"; sessionId: string };
+  | { type: "ws.close"; sessionId: string }
+  | { type: "sim.event"; event: PrinterSimEvent };
 
 export const DEFAULT_TCP_PORT = 9100;
 /** WebSocket port — defaults to HTTP port when Bridge serves the unified UI. */
 export const DEFAULT_WS_PORT = 8081;
 export const DEFAULT_HTTP_PORT = 8081;
-export const DEFAULT_HISTORY_LIMIT = 200;
+export const DEFAULT_HISTORY_LIMIT = 50;
 
 /** Jobs larger than this use chunked WebSocket delivery. */
 export const JOB_CHUNK_THRESHOLD = 256 * 1024;

@@ -11,6 +11,7 @@ import {
 
 interface Props {
   protocol: "tspl" | "escpos";
+  onOpenChange?: (open: boolean) => void;
 }
 
 function CommandTable({ rows, protocol }: { rows: CommandEntry[]; protocol: "tspl" | "escpos" }) {
@@ -65,7 +66,7 @@ function CategoryGroup({
   );
 }
 
-export function CommandReference({ protocol }: Props) {
+export function CommandReference({ protocol, onOpenChange }: Props) {
   const { t } = useLocale();
   const categories = protocol === "tspl" ? TSPL_CATEGORIES : ESCPOS_CATEGORIES;
   const source = protocol === "tspl" ? TSPL_COMMANDS : ESCPOS_COMMANDS;
@@ -73,7 +74,10 @@ export function CommandReference({ protocol }: Props) {
 
   return (
     <div className="cmd-ref">
-      <details className="cmd-ref-root">
+      <details
+        className="cmd-ref-root"
+        onToggle={(e) => onOpenChange?.((e.currentTarget as HTMLDetailsElement).open)}
+      >
         <summary>
           {title} ({source.length})
         </summary>

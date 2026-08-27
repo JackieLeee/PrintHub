@@ -1,8 +1,6 @@
-import { useState } from "react";
-import type { HubStatus } from "@virt-printer/shared";
+import { useEffect, useState } from "react";
 import { useLocale } from "../i18n/context";
 import { loadRawFile, loadRawFromText } from "../lib/raw-input";
-import { resolveHttpBase, submitRawPayload } from "../lib/print-api";
 import { CommandReference } from "./CommandReference";
 import {
   ESCPOS_SAMPLE_FILENAME,
@@ -12,46 +10,44 @@ import {
 } from "../lib/samples";
 
 interface Props {
-  status: HubStatus | null;
+  onPreview: (payload: Uint8Array, label: string) => void;
+  onCmdRefOpenChange?: (open: boolean) => void;
 }
 
 type InputMode = "file" | "hex" | "base64" | "tspl" | "escpos";
 
-export function RawPrintPanel({ status }: Props) {
+export function RawPrintPanel({ onPreview, onCmdRefOpenChange }: Props) {
   const { t, format } = useLocale();
   const [inputMode, setInputMode] = useState<InputMode>("file");
   const [textInput, setTextInput] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const httpBase = resolveHttpBase(status);
+  useEffect(() => {
+    if (inputMode !== "escpos" && inputMode !== "tspl") {
+      onCmdRefOpenChange?.(false);
+    }
+  }, [inputMode, onCmdRefOpenChange]);
 
-  async function handleSubmit(data: Uint8Array, label: string) {
-    setSubmitting(true);
+  function previewPayload(data: Uint8Array, label: string) {
+    setBusy(true);
     setMessage(null);
     setError(null);
     try {
-      const result = await submitRawPayload(httpBase, data);
-      const protocol = result.protocol ? ` (${result.protocol})` : "";
-      setMessage(
-        format(t.rawPrint.submitted, {
-          jobId: result.jobId ?? "job",
-          protocol,
-          label,
-        }),
-      );
+      onPreview(data, label);
+      setMessage(format(t.rawPrint.previewed, { label }));
     } catch (err) {
-      setError(err instanceof Error ? err.message : t.rawPrint.submitFailed);
+      setError(err instanceof Error ? err.message : t.rawPrint.previewFailed);
     } finally {
-      setSubmitting(false);
+      setBusy(false);
     }
   }
 
-  async function onSample(kind: "escpos" | "tspl") {
+  function onSample(kind: "escpos" | "tspl") {
     const data = kind === "escpos" ? getEscPosSampleBytes() : getTsplSampleBytes();
     const label = kind === "escpos" ? ESCPOS_SAMPLE_FILENAME : TSPL_SAMPLE_FILENAME;
-    await handleSubmit(data, label);
+    previewPayload(data, label);
   }
 
   async function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -59,7 +55,7 @@ export function RawPrintPanel({ status }: Props) {
     if (!file) return;
     try {
       const loaded = await loadRawFile(file);
-      await handleSubmit(loaded.data, loaded.name);
+      previewPayload(loaded.data, loaded.name);
     } catch (err) {
       setError(err instanceof Error ? err.message : t.rawPrint.fileParseFailed);
     } finally {
@@ -67,7 +63,7 @@ export function RawPrintPanel({ status }: Props) {
     }
   }
 
-  async function onTextSubmit() {
+  function onTextSubmit() {
     try {
       const formatMap = {
         hex: "hex",
@@ -76,7 +72,7 @@ export function RawPrintPanel({ status }: Props) {
         escpos: "escpos",
       } as const;
       const loaded = loadRawFromText(textInput, formatMap[inputMode as keyof typeof formatMap]);
-      await handleSubmit(loaded.data, loaded.name);
+      previewPayload(loaded.data, loaded.name);
     } catch (err) {
       setError(err instanceof Error ? err.message : t.rawPrint.decodeFailed);
     }
@@ -98,29 +94,31 @@ export function RawPrintPanel({ status }: Props) {
   }
 
   function submitLabelFor(mode: InputMode): string {
-    if (mode === "tspl") return t.rawPrint.tsplPrint;
-    if (mode === "escpos") return t.rawPrint.escposPrint;
-    return t.rawPrint.decodePrint;
+    if (mode === "tspl") return t.rawPrint.tsplPreview;
+    if (mode === "escpos") return t.rawPrint.escposPreview;
+    return t.rawPrint.decodePreview;
   }
 
   return (
     <div className="raw-print-panel">
+      <p className="raw-local-hint">{t.rawPrint.localHint}</p>
+
       <div className="sample-actions">
         <button
           type="button"
           className="btn-accent"
-          disabled={submitting}
-          onClick={() => void onSample("escpos")}
+          disabled={busy}
+          onClick={() => onSample("escpos")}
         >
-          {submitting ? t.samples.printing : t.samples.printEscPos}
+          {busy ? t.samples.printing : t.samples.previewEscPos}
         </button>
         <button
           type="button"
           className="btn-accent"
-          disabled={submitting}
-          onClick={() => void onSample("tspl")}
+          disabled={busy}
+          onClick={() => onSample("tspl")}
         >
-          {submitting ? t.samples.printing : t.samples.printTspl}
+          {busy ? t.samples.printing : t.samples.previewTspl}
         </button>
       </div>
 
@@ -143,9 +141,9 @@ export function RawPrintPanel({ status }: Props) {
             type="file"
             accept=".bin,.escpos,.prn,.txt,.tspl,application/octet-stream"
             onChange={onFileChange}
-            disabled={submitting}
+            disabled={busy}
           />
-          {submitting ? t.rawPrint.submitting : t.rawPrint.pickFile}
+          {busy ? t.rawPrint.submitting : t.rawPrint.pickFile}
         </label>
       ) : (
         <>
@@ -156,21 +154,18 @@ export function RawPrintPanel({ status }: Props) {
             onChange={(e) => setTextInput(e.target.value)}
             placeholder={placeholderFor(inputMode)}
             rows={inputMode === "tspl" || inputMode === "escpos" ? 8 : 4}
-            disabled={submitting}
+            disabled={busy}
             spellCheck={false}
           />
           {(inputMode === "tspl" || inputMode === "escpos") && (
-            <CommandReference protocol={inputMode} />
+            <CommandReference protocol={inputMode} onOpenChange={onCmdRefOpenChange} />
           )}
-          <button type="button" onClick={() => void onTextSubmit()} disabled={submitting || !textInput.trim()}>
-            {submitting ? t.rawPrint.submitting : submitLabelFor(inputMode)}
+          <button type="button" onClick={onTextSubmit} disabled={busy || !textInput.trim()}>
+            {busy ? t.rawPrint.submitting : submitLabelFor(inputMode)}
           </button>
         </>
       )}
 
-      <div className="network-hint">
-        POST <code>{httpBase}/print/raw</code>
-      </div>
       {message && <div className="upload-msg ok">{message}</div>}
       {error && <div className="upload-msg err">{error}</div>}
     </div>
