@@ -2,13 +2,13 @@
 
 ## Scope
 
-virt-printer-hub is a **local/LAN debugging tool**. The Bridge listens on TCP **9100** and HTTP/WebSocket **8081** on your machine or network. It is not intended to be exposed directly to the public internet.
+PrintHub is a **local/LAN debugging tool**. The Bridge listens on TCP **9100** and HTTP/WebSocket **8081** on your machine or network. It is not intended to be exposed directly to the public internet.
 
 ## Reporting a vulnerability
 
 If you find a security issue, please **do not** open a public issue with exploit details.
 
-Instead, open a [GitHub Security Advisory](https://github.com/JackieLeee/virt-printer-hub/security/advisories/new) or contact the repository owner privately.
+Instead, open a [GitHub Security Advisory](https://github.com/JackieLeee/PrintHub/security/advisories/new) or contact the repository owner privately.
 
 Include:
 

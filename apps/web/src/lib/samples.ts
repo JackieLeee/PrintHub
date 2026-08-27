@@ -8,10 +8,10 @@ const TSPL_SAMPLE = [
   "DIRECTION 0",
   "REFERENCE 0,0",
   "CLS",
-  'TEXT 10,12,"0",0,1,1,"virt-printer-hub"',
+  'TEXT 10,12,"0",0,1,1,"PrintHub"',
   'TEXT 10,36,"0",0,1,1,"TSPL Sample Label"',
   'BARCODE 10,70,"128",64,1,0,2,4,"1234567890"',
-  'QRCODE 10,170,L,4,A,0,"https://github.com/JackieLeee/virt-printer-hub"',
+  'QRCODE 10,170,L,4,A,0,"https://github.com/JackieLeee/PrintHub"',
   "PRINT 1",
 ].join("\r\n");
 

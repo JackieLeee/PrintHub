@@ -4,9 +4,9 @@ export const en: Translations = {
   lang: { label: "Language", zh: "中文", en: "English" },
   theme: { label: "Theme" },
   app: {
-    title: "virt-printer-hub",
-    subtitle: "Virtual printer · {host} · TCP {tcp}",
-    subtitleOffline: "Virtual printer · Waiting for Bridge…",
+    title: "PrintHub",
+    subtitle: "ESC/POS & TSPL · {host} · TCP {tcp}",
+    subtitleOffline: "ESC/POS & TSPL · Waiting for Bridge…",
     loadingHistory: "Loading history…",
   },
   sections: {

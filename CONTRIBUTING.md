@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for your interest in virt-printer-hub.
+Thanks for your interest in PrintHub.
 
 ## Setup
 

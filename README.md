@@ -1,4 +1,4 @@
-# virt-printer-hub
+# PrintHub
 
 > **中文：** [README.zh.md](./README.zh.md)
 
@@ -12,7 +12,7 @@
 
 Cash registers, POS apps, and label printers usually send **raw ESC/POS or TSPL** over TCP — not PDF or images. Without a physical printer, it is hard to tell whether the bytes are correct.
 
-**virt-printer-hub** acts as a **LAN virtual printer**: it accepts the same payloads as real hardware and shows them in a browser — live preview, history, samples, and raw debug submit.
+**PrintHub** acts as a **LAN virtual printer**: it accepts the same payloads as real hardware and shows them in a browser — live preview, history, samples, and raw debug submit.
 
 ## What it does
 
@@ -47,7 +47,7 @@ pnpm dev      # build Web UI + start Bridge
 **TCP smoke test:**
 
 ```bash
-printf '\x1b@\x1ba\x01Hello virt-printer-hub\n\x1dV\x00' | nc -N localhost 9100
+printf '\x1b@\x1ba\x01Hello PrintHub\n\x1dV\x00' | nc -N localhost 9100
 ```
 
 **HTTP raw submit:**
@@ -60,7 +60,7 @@ curl -X POST http://localhost:8081/print/raw \
 
 ## Architecture
 
-![virt-printer-hub architecture](./docs/assets/architecture.en.png)
+![PrintHub architecture](./docs/assets/architecture.en.png)
 
 **Monorepo layout**
 
@@ -73,11 +73,11 @@ One process (`pnpm dev` / `pnpm start`): Bridge builds and serves `apps/web/dist
 
 ## Star History
 
-<a href="https://www.star-history.com/?repos=JackieLeee%2Fvirt-printer-hub&type=date&legend=top-left">
+<a href="https://www.star-history.com/?repos=JackieLeee%2FPrintHub&type=date&legend=top-left">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=JackieLeee/virt-printer-hub&type=date&theme=dark&legend=top-left&sealed_token=5vTp2kN2Rk2htmjqKbdcYEzHPHACTGKRblEW08e-5wqCuPr41LtoqOmJjIRJWfwjhDOprVY9FCwJSrD3KFNnznqcqLtkPY4FcAEWgeVJGupONbZI4QBR3VJElwzD5JdlgGcFmKlLNvPtdBXMKYLbVHVHpQtnw1YwEui_In1eWmz4kVFyzrUUYw4sN8dm" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=JackieLeee/virt-printer-hub&type=date&legend=top-left&sealed_token=5vTp2kN2Rk2htmjqKbdcYEzHPHACTGKRblEW08e-5wqCuPr41LtoqOmJjIRJWfwjhDOprVY9FCwJSrD3KFNnznqcqLtkPY4FcAEWgeVJGupONbZI4QBR3VJElwzD5JdlgGcFmKlLNvPtdBXMKYLbVHVHpQtnw1YwEui_In1eWmz4kVFyzrUUYw4sN8dm" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=JackieLeee/virt-printer-hub&type=date&legend=top-left&sealed_token=5vTp2kN2Rk2htmjqKbdcYEzHPHACTGKRblEW08e-5wqCuPr41LtoqOmJjIRJWfwjhDOprVY9FCwJSrD3KFNnznqcqLtkPY4FcAEWgeVJGupONbZI4QBR3VJElwzD5JdlgGcFmKlLNvPtdBXMKYLbVHVHpQtnw1YwEui_In1eWmz4kVFyzrUUYw4sN8dm" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=JackieLeee/PrintHub&type=date&theme=dark&legend=top-left&sealed_token=5vTp2kN2Rk2htmjqKbdcYEzHPHACTGKRblEW08e-5wqCuPr41LtoqOmJjIRJWfwjhDOprVY9FCwJSrD3KFNnznqcqLtkPY4FcAEWgeVJGupONbZI4QBR3VJElwzD5JdlgGcFmKlLNvPtdBXMKYLbVHVHpQtnw1YwEui_In1eWmz4kVFyzrUUYw4sN8dm" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=JackieLeee/PrintHub&type=date&legend=top-left&sealed_token=5vTp2kN2Rk2htmjqKbdcYEzHPHACTGKRblEW08e-5wqCuPr41LtoqOmJjIRJWfwjhDOprVY9FCwJSrD3KFNnznqcqLtkPY4FcAEWgeVJGupONbZI4QBR3VJElwzD5JdlgGcFmKlLNvPtdBXMKYLbVHVHpQtnw1YwEui_In1eWmz4kVFyzrUUYw4sN8dm" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=JackieLeee/PrintHub&type=date&legend=top-left&sealed_token=5vTp2kN2Rk2htmjqKbdcYEzHPHACTGKRblEW08e-5wqCuPr41LtoqOmJjIRJWfwjhDOprVY9FCwJSrD3KFNnznqcqLtkPY4FcAEWgeVJGupONbZI4QBR3VJElwzD5JdlgGcFmKlLNvPtdBXMKYLbVHVHpQtnw1YwEui_In1eWmz4kVFyzrUUYw4sN8dm" />
  </picture>
 </a>
 

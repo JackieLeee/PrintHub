@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Local integration smoke tests for virt-printer-hub Bridge.
+ * Local integration smoke tests for PrintHub Bridge.
  * Usage: node scripts/integration-test.mjs
  */
 import net from "node:net";
@@ -115,7 +115,7 @@ async function testImageUpload() {
 }
 
 async function main() {
-  console.log("virt-printer-hub integration tests\n");
+  console.log("PrintHub integration tests\n");
   const tests = [
     ["health", testHealth],
     ["status", testStatus],

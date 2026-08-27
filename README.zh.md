@@ -1,4 +1,4 @@
-# virt-printer-hub
+# PrintHub
 
 > **English:** [README.md](./README.md)
 
@@ -12,7 +12,7 @@
 
 收银机、POS 和标签机通常通过 TCP 发送 **原始 ESC/POS 或 TSPL 字节流**，而不是 PDF。没有实体打印机时，很难确认发出的数据是否正确。
 
-**virt-printer-hub** 是一个 **局域网虚拟打印机**：接收与真实设备相同的数据，在浏览器中实时预览、查看历史，并支持 Sample 与 Raw 调试打印。
+**PrintHub** 是一个 **局域网虚拟打印机**：接收与真实设备相同的数据，在浏览器中实时预览、查看历史，并支持 Sample 与 Raw 调试打印。
 
 ## 功能
 
@@ -48,7 +48,7 @@ pnpm dev      # 构建 Web UI 并启动 Bridge
 **TCP 快速测试：**
 
 ```bash
-printf '\x1b@\x1ba\x01Hello virt-printer-hub\n\x1dV\x00' | nc -N localhost 9100
+printf '\x1b@\x1ba\x01Hello PrintHub\n\x1dV\x00' | nc -N localhost 9100
 ```
 
 **HTTP Raw 提交：**
@@ -61,7 +61,7 @@ curl -X POST http://localhost:8081/print/raw \
 
 ## 架构
 
-![virt-printer-hub 架构图](./docs/assets/architecture.zh.png)
+![PrintHub 架构图](./docs/assets/architecture.zh.png)
 
 **Monorepo 结构**
 
@@ -74,11 +74,11 @@ curl -X POST http://localhost:8081/print/raw \
 
 ## Star 趋势
 
-<a href="https://www.star-history.com/?repos=JackieLeee%2Fvirt-printer-hub&type=date&legend=top-left">
+<a href="https://www.star-history.com/?repos=JackieLeee%2FPrintHub&type=date&legend=top-left">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=JackieLeee/virt-printer-hub&type=date&theme=dark&legend=top-left&sealed_token=5vTp2kN2Rk2htmjqKbdcYEzHPHACTGKRblEW08e-5wqCuPr41LtoqOmJjIRJWfwjhDOprVY9FCwJSrD3KFNnznqcqLtkPY4FcAEWgeVJGupONbZI4QBR3VJElwzD5JdlgGcFmKlLNvPtdBXMKYLbVHVHpQtnw1YwEui_In1eWmz4kVFyzrUUYw4sN8dm" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=JackieLeee/virt-printer-hub&type=date&legend=top-left&sealed_token=5vTp2kN2Rk2htmjqKbdcYEzHPHACTGKRblEW08e-5wqCuPr41LtoqOmJjIRJWfwjhDOprVY9FCwJSrD3KFNnznqcqLtkPY4FcAEWgeVJGupONbZI4QBR3VJElwzD5JdlgGcFmKlLNvPtdBXMKYLbVHVHpQtnw1YwEui_In1eWmz4kVFyzrUUYw4sN8dm" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=JackieLeee/virt-printer-hub&type=date&legend=top-left&sealed_token=5vTp2kN2Rk2htmjqKbdcYEzHPHACTGKRblEW08e-5wqCuPr41LtoqOmJjIRJWfwjhDOprVY9FCwJSrD3KFNnznqcqLtkPY4FcAEWgeVJGupONbZI4QBR3VJElwzD5JdlgGcFmKlLNvPtdBXMKYLbVHVHpQtnw1YwEui_In1eWmz4kVFyzrUUYw4sN8dm" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=JackieLeee/PrintHub&type=date&theme=dark&legend=top-left&sealed_token=5vTp2kN2Rk2htmjqKbdcYEzHPHACTGKRblEW08e-5wqCuPr41LtoqOmJjIRJWfwjhDOprVY9FCwJSrD3KFNnznqcqLtkPY4FcAEWgeVJGupONbZI4QBR3VJElwzD5JdlgGcFmKlLNvPtdBXMKYLbVHVHpQtnw1YwEui_In1eWmz4kVFyzrUUYw4sN8dm" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=JackieLeee/PrintHub&type=date&legend=top-left&sealed_token=5vTp2kN2Rk2htmjqKbdcYEzHPHACTGKRblEW08e-5wqCuPr41LtoqOmJjIRJWfwjhDOprVY9FCwJSrD3KFNnznqcqLtkPY4FcAEWgeVJGupONbZI4QBR3VJElwzD5JdlgGcFmKlLNvPtdBXMKYLbVHVHpQtnw1YwEui_In1eWmz4kVFyzrUUYw4sN8dm" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=JackieLeee/PrintHub&type=date&legend=top-left&sealed_token=5vTp2kN2Rk2htmjqKbdcYEzHPHACTGKRblEW08e-5wqCuPr41LtoqOmJjIRJWfwjhDOprVY9FCwJSrD3KFNnznqcqLtkPY4FcAEWgeVJGupONbZI4QBR3VJElwzD5JdlgGcFmKlLNvPtdBXMKYLbVHVHpQtnw1YwEui_In1eWmz4kVFyzrUUYw4sN8dm" />
  </picture>
 </a>
 

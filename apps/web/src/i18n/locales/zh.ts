@@ -4,9 +4,9 @@ export const zh: Translations = {
   lang: { label: "语言", zh: "中文", en: "English" },
   theme: { label: "主题" },
   app: {
-    title: "virt-printer-hub",
-    subtitle: "虚拟打印机 · {host} · TCP {tcp}",
-    subtitleOffline: "虚拟打印机 · 等待 Bridge 连接…",
+    title: "PrintHub",
+    subtitle: "ESC/POS 与 TSPL · {host} · TCP {tcp}",
+    subtitleOffline: "ESC/POS 与 TSPL · 等待 Bridge 连接…",
     loadingHistory: "加载历史…",
   },
   sections: {
