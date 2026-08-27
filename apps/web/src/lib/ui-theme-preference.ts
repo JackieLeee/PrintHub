@@ -1,6 +1,6 @@
 import {
   DEFAULT_UI_THEME_ID,
-  isUiThemeId,
+  resolveUiThemeId,
   type UiThemeId,
 } from "./ui-themes.js";
 
@@ -9,7 +9,15 @@ const STORAGE_KEY = "virt-printer.ui-theme";
 export function loadUiThemeId(): UiThemeId {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw && isUiThemeId(raw)) return raw;
+    const resolved = resolveUiThemeId(raw);
+    if (raw !== resolved) {
+      try {
+        localStorage.setItem(STORAGE_KEY, resolved);
+      } catch {
+        /* ignore */
+      }
+    }
+    return resolved;
   } catch {
     /* ignore */
   }

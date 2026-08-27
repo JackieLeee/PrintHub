@@ -3,6 +3,10 @@ export type Locale = "zh" | "en";
 export interface Translations {
   lang: { label: string; zh: string; en: string };
   theme: { label: string };
+  toolbelt: {
+    network: string;
+    debug: string;
+  };
   app: {
     title: string;
     subtitle: string;
@@ -36,6 +40,7 @@ export interface Translations {
   history: {
     empty: string;
     emptyHint: string;
+    railEmptyHint: string;
     receipt: string;
     receiptWithImage: string;
     label: string;
@@ -90,5 +95,24 @@ export interface Translations {
     submitFailed: string;
     fileParseFailed: string;
     decodeFailed: string;
+  };
+  cmdRef: {
+    titleTspl: string;
+    titleEscpos: string;
+    colCommand: string;
+    colSyntax: string;
+    colDesc: string;
+    categories: {
+      labelSetup: string;
+      contentGraphics: string;
+      printControl: string;
+      hardwareOptions: string;
+      initFeed: string;
+      textStyle: string;
+      barcodeImage: string;
+      deviceControl: string;
+    };
+    labels: Record<string, string>;
+    desc: Record<string, string>;
   };
 }

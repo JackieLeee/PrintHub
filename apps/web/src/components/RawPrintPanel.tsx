@@ -3,6 +3,7 @@ import type { HubStatus } from "@virt-printer/shared";
 import { useLocale } from "../i18n/context";
 import { loadRawFile, loadRawFromText } from "../lib/raw-input";
 import { resolveHttpBase, submitRawPayload } from "../lib/print-api";
+import { CommandReference } from "./CommandReference";
 import {
   ESCPOS_SAMPLE_FILENAME,
   getEscPosSampleBytes,
@@ -158,6 +159,9 @@ export function RawPrintPanel({ status }: Props) {
             disabled={submitting}
             spellCheck={false}
           />
+          {(inputMode === "tspl" || inputMode === "escpos") && (
+            <CommandReference protocol={inputMode} />
+          )}
           <button type="button" onClick={() => void onTextSubmit()} disabled={submitting || !textInput.trim()}>
             {submitting ? t.rawPrint.submitting : submitLabelFor(inputMode)}
           </button>

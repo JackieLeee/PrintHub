@@ -1,14 +1,14 @@
 export type UiThemeId =
-  | "cursor"
-  | "linear"
-  | "vercel"
-  | "supabase"
-  | "raycast"
-  | "notion"
-  | "stripe"
-  | "ibm-carbon"
-  | "resend"
-  | "voltagent";
+  | "deep-ink"
+  | "violet-night"
+  | "carbon-black"
+  | "forest-green"
+  | "warm-rose"
+  | "plain-paper"
+  | "deep-ocean"
+  | "steel-blue"
+  | "amber-glow"
+  | "celadon";
 
 export interface UiThemeTokens {
   bg: string;
@@ -30,12 +30,26 @@ export interface UiTheme {
   tokens: UiThemeTokens;
 }
 
-export const DEFAULT_UI_THEME_ID: UiThemeId = "cursor";
+export const DEFAULT_UI_THEME_ID: UiThemeId = "deep-ink";
+
+/** Maps legacy theme ids from localStorage to the new naming scheme. */
+export const LEGACY_THEME_ID_MAP: Record<string, UiThemeId> = {
+  cursor: "deep-ink",
+  linear: "violet-night",
+  vercel: "carbon-black",
+  supabase: "forest-green",
+  raycast: "warm-rose",
+  notion: "plain-paper",
+  stripe: "deep-ocean",
+  "ibm-carbon": "steel-blue",
+  resend: "carbon-black",
+  voltagent: "celadon",
+};
 
 export const UI_THEMES: UiTheme[] = [
   {
-    id: "cursor",
-    name: "Cursor IDE",
+    id: "deep-ink",
+    name: "深墨",
     tokens: {
       bg: "#0f1117",
       surface: "#171a22",
@@ -51,8 +65,8 @@ export const UI_THEMES: UiTheme[] = [
     },
   },
   {
-    id: "linear",
-    name: "Linear",
+    id: "violet-night",
+    name: "紫夜",
     tokens: {
       bg: "#0b0b0f",
       surface: "#13131a",
@@ -68,8 +82,8 @@ export const UI_THEMES: UiTheme[] = [
     },
   },
   {
-    id: "vercel",
-    name: "Vercel",
+    id: "carbon-black",
+    name: "碳黑",
     tokens: {
       bg: "#000000",
       surface: "#0a0a0a",
@@ -81,12 +95,12 @@ export const UI_THEMES: UiTheme[] = [
       ok: "#50e3c2",
       warn: "#f5a623",
       err: "#ee0000",
-      font: '"Geist", "SF Pro Text", system-ui, sans-serif',
+      font: '"SF Pro Text", system-ui, sans-serif',
     },
   },
   {
-    id: "supabase",
-    name: "Supabase",
+    id: "forest-green",
+    name: "森绿",
     tokens: {
       bg: "#0c0f0e",
       surface: "#121816",
@@ -102,8 +116,8 @@ export const UI_THEMES: UiTheme[] = [
     },
   },
   {
-    id: "raycast",
-    name: "Raycast",
+    id: "warm-rose",
+    name: "暖玫",
     tokens: {
       bg: "#1a1a1c",
       surface: "#212124",
@@ -119,8 +133,8 @@ export const UI_THEMES: UiTheme[] = [
     },
   },
   {
-    id: "notion",
-    name: "Notion",
+    id: "plain-paper",
+    name: "素纸",
     tokens: {
       bg: "#191919",
       surface: "#202020",
@@ -136,8 +150,8 @@ export const UI_THEMES: UiTheme[] = [
     },
   },
   {
-    id: "stripe",
-    name: "Stripe",
+    id: "deep-ocean",
+    name: "深海",
     tokens: {
       bg: "#0a2540",
       surface: "#0f3058",
@@ -153,8 +167,8 @@ export const UI_THEMES: UiTheme[] = [
     },
   },
   {
-    id: "ibm-carbon",
-    name: "IBM Carbon",
+    id: "steel-blue",
+    name: "钢蓝",
     tokens: {
       bg: "#161616",
       surface: "#1c1c1c",
@@ -170,41 +184,47 @@ export const UI_THEMES: UiTheme[] = [
     },
   },
   {
-    id: "resend",
-    name: "Resend",
+    id: "amber-glow",
+    name: "琥珀",
     tokens: {
-      bg: "#09090b",
-      surface: "#0f0f12",
-      surface2: "#18181c",
-      border: "#27272a",
-      text: "#fafafa",
-      muted: "#71717a",
-      accent: "#ffffff",
-      ok: "#22c55e",
-      warn: "#eab308",
-      err: "#ef4444",
-      font: '"Inter", "SF Mono", ui-monospace, monospace',
+      bg: "#14110e",
+      surface: "#1c1814",
+      surface2: "#252018",
+      border: "#3d3428",
+      text: "#f0ebe3",
+      muted: "#9a8f7f",
+      accent: "#e8a838",
+      ok: "#6bbf59",
+      warn: "#e8a838",
+      err: "#d45d5d",
+      font: 'Georgia, "SF Pro Text", system-ui, serif',
     },
   },
   {
-    id: "voltagent",
-    name: "VoltAgent",
+    id: "celadon",
+    name: "青瓷",
     tokens: {
-      bg: "#050505",
-      surface: "#0c0c0c",
-      surface2: "#141414",
-      border: "#262626",
-      text: "#e5e5e5",
-      muted: "#737373",
-      accent: "#10b981",
-      ok: "#10b981",
-      warn: "#f59e0b",
-      err: "#ef4444",
-      font: '"JetBrains Mono", "SF Mono", ui-monospace, monospace',
+      bg: "#0e1211",
+      surface: "#151a19",
+      surface2: "#1c2321",
+      border: "#2a3532",
+      text: "#e2ebe8",
+      muted: "#7a9089",
+      accent: "#5eb8a8",
+      ok: "#5eb8a8",
+      warn: "#c9a227",
+      err: "#c96b6b",
+      font: '"Noto Sans SC", "SF Pro Text", system-ui, sans-serif',
     },
   },
 ];
 
 export function isUiThemeId(value: string): value is UiThemeId {
   return UI_THEMES.some((theme) => theme.id === value);
+}
+
+export function resolveUiThemeId(raw: string | null | undefined): UiThemeId {
+  if (raw && isUiThemeId(raw)) return raw;
+  if (raw && raw in LEGACY_THEME_ID_MAP) return LEGACY_THEME_ID_MAP[raw]!;
+  return DEFAULT_UI_THEME_ID;
 }

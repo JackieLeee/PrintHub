@@ -5,6 +5,7 @@ import { RelayClient } from "@virt-printer/relay-client";
 import { isMeaningfulPrintJob } from "@virt-printer/escpos";
 import { parseTspl, formatLabelSize, isTsplPayload } from "@virt-printer/tspl";
 import { renderEscPosPreview, renderTsplToCanvas } from "@virt-printer/renderer";
+import { GithubLink } from "./components/GithubLink";
 import { LanguageSwitcher } from "./components/LanguageSwitcher";
 import { ThemeSwitcher } from "./components/ThemeSwitcher";
 import { NetworkPanel } from "./components/NetworkPanel";
@@ -44,6 +45,7 @@ export function App() {
   const [jobs, setJobs] = useState<StoredJob[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [historyReady, setHistoryReady] = useState(false);
+  const [openPanel, setOpenPanel] = useState<"network" | "debug" | null>("network");
   const clientRef = useRef<RelayClient | null>(null);
   const activeHubIdRef = useRef<string>("");
 
@@ -216,8 +218,20 @@ export function App() {
   const tcpPort = status?.tcpPort ?? DEFAULT_TCP_PORT;
   const hostIp = status?.hostIp;
 
+  const togglePanel = useCallback((panel: "network" | "debug") => {
+    setOpenPanel((current) => (current === panel ? null : panel));
+  }, []);
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpenPanel(null);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   return (
-    <div className="app">
+    <div className="app app--preview-first">
       <header className="header">
         <div>
           <h1>{t.app.title}</h1>
@@ -228,45 +242,65 @@ export function App() {
           </p>
         </div>
         <div className="header-actions">
+          <GithubLink />
           <ThemeSwitcher />
           <LanguageSwitcher />
           {!historyReady && <span className="badge">{t.app.loadingHistory}</span>}
         </div>
       </header>
 
-      <section className="top-section">
-        <div className="top-bar">
-          <div className="panel top-panel">
-            <h2>{t.sections.network}</h2>
-            <NetworkPanel
-              status={status}
-              connected={connected}
-              wsUrl={wsUrl}
-              bridgeInput={bridgeInput}
-              showBridgeSetup={isExternalDemoHost() || (!connected && !isBridgeOrigin())}
-              lanUiUrl={hostIp ? lanUiUrl(hostIp, status?.httpPort) : null}
-              onBridgeInputChange={setBridgeInput}
-              onConnectBridge={() => connectBridge()}
-              onReconnect={connect}
-            />
-          </div>
+      <div className="toolbelt">
+        <button
+          type="button"
+          className={`toolbelt-btn ${openPanel === "network" ? "active" : ""}`}
+          aria-expanded={openPanel === "network"}
+          onClick={() => togglePanel("network")}
+        >
+          {t.toolbelt.network} {openPanel === "network" ? "▴" : "▾"}
+        </button>
+        <button
+          type="button"
+          className={`toolbelt-btn ${openPanel === "debug" ? "active" : ""}`}
+          aria-expanded={openPanel === "debug"}
+          onClick={() => togglePanel("debug")}
+        >
+          {t.toolbelt.debug} {openPanel === "debug" ? "▴" : "▾"}
+        </button>
+        <span className={`pill ${connected ? "ok" : "warn"}`}>
+          {connected ? t.network.bridgeOnline : t.network.waitingBridge}
+        </span>
+        {hostIp && (
+          <span className="toolbelt-meta">
+            {hostIp} · TCP {tcpPort}
+          </span>
+        )}
+      </div>
 
-          <div className="panel debug-top-panel top-panel">
-            <h2>{t.sections.debugPrint}</h2>
-            <p className="debug-top-hint">{t.sections.debugPrintHint}</p>
-            <RawPrintPanel status={status} />
-          </div>
-        </div>
-      </section>
+      {openPanel === "network" && (
+        <section className="toolbelt-panel panel">
+          <NetworkPanel
+            status={status}
+            connected={connected}
+            wsUrl={wsUrl}
+            bridgeInput={bridgeInput}
+            showBridgeSetup={isExternalDemoHost() || (!connected && !isBridgeOrigin())}
+            lanUiUrl={hostIp ? lanUiUrl(hostIp, status?.httpPort) : null}
+            onBridgeInputChange={setBridgeInput}
+            onConnectBridge={() => connectBridge()}
+            onReconnect={connect}
+          />
+        </section>
+      )}
 
-      <div className="main-split">
-        <aside className="panel history-panel">
-          <h2>{t.sections.history}</h2>
-          <PrintHistory jobs={visibleJobs} selectedId={selectedId} onSelect={setSelectedId} hubId={activeHubId} />
-        </aside>
+      {openPanel === "debug" && (
+        <section className="toolbelt-panel panel debug-top-panel">
+          <p className="debug-top-hint">{t.sections.debugPrintHint}</p>
+          <RawPrintPanel status={status} />
+        </section>
+      )}
 
-        <section className="panel preview-panel">
-          <h2>{t.sections.preview}</h2>
+      <div className="preview-stage">
+        <main className="preview-primary panel">
           <PreviewPanel
             job={selectedJob}
             imageDataUrl={preview.imageDataUrl}
@@ -275,7 +309,18 @@ export function App() {
             canvas={preview.canvas}
             warnings={preview.warnings}
           />
-        </section>
+        </main>
+
+        <aside className="history-sidebar panel">
+          <h2>{t.sections.history}</h2>
+          <PrintHistory
+            jobs={visibleJobs}
+            selectedId={selectedId}
+            onSelect={setSelectedId}
+            hubId={activeHubId}
+            variant="sidebar"
+          />
+        </aside>
       </div>
     </div>
   );
