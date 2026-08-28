@@ -38,17 +38,8 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Build web UI for desktop
-        run: pnpm build:web:desktop
-
-      - name: Build workspace packages
-        run: |
-          pnpm --filter @virt-printer/shared build
-          pnpm --filter @virt-printer/tspl build
-          pnpm --filter @virt-printer/bridge build
-
       - name: Build macOS universal DMG
-        run: pnpm --filter @virt-printer/desktop dist:ci
+        run: pnpm build:web:desktop && pnpm --filter @virt-printer/bridge build && pnpm --filter @virt-printer/desktop dist:ci
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
 
