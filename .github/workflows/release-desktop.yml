@@ -48,4 +48,5 @@ jobs:
         with:
           tag_name: ${{ github.ref_name }}
           files: apps/desktop/release/*.dmg
+          replace_assets: true
           generate_release_notes: true
