@@ -27,4 +27,4 @@ jobs:
             echo "::error::Missing ${NOTES} — create it before updating."
             exit 1
           fi
-          gh release edit "$TAG" --title "$TAG" --notes-file "$NOTES"
+          gh release edit "$TAG" --title "$TAG" --notes-file "$NOTES" --draft=false
