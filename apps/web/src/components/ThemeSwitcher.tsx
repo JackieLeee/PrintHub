@@ -30,7 +30,7 @@ function PaletteIcon() {
   );
 }
 
-export function ThemeSwitcher() {
+export function ThemeSwitcher({ compact = false }: { compact?: boolean }) {
   const { t } = useLocale();
   const [themeId, setThemeId] = useState<UiThemeId>(() => loadUiThemeId());
 
@@ -39,10 +39,13 @@ export function ThemeSwitcher() {
   }, [themeId]);
 
   return (
-    <label className="lang-select-wrap" title={t.theme.label}>
+    <label
+      className={`lang-select-wrap${compact ? " header-toolbar-control" : ""}`}
+      title={t.theme.label}
+    >
       <PaletteIcon />
       <select
-        className="lang-select"
+        className={`lang-select${compact ? " header-toolbar-select" : ""}`}
         value={themeId}
         aria-label={t.theme.label}
         onChange={(e) => {

@@ -195,7 +195,7 @@ body {
 .header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   gap: 16px;
   margin-bottom: 24px;
   flex-wrap: wrap;
@@ -216,42 +216,77 @@ body {
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   flex-wrap: wrap;
 }
 
 .header-actions-group {
   display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  padding: 2px;
+  align-items: stretch;
+  gap: 0;
+  padding: 3px;
   border-radius: 10px;
   border: 1px solid var(--border);
   background: var(--surface2);
 }
 
+.header-actions-divider {
+  align-self: center;
+  width: 1px;
+  height: 18px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+.header-toolbar-control {
+  margin: 0;
+}
+
+.header-toolbar-select {
+  border: none !important;
+  background: transparent !important;
+  background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+    linear-gradient(135deg, var(--muted) 50%, transparent 50%) !important;
+  background-position: calc(100% - 10px) 55%, calc(100% - 6px) 55% !important;
+  background-size: 4px 4px, 4px 4px !important;
+  padding: 5px 22px 5px 6px !important;
+  min-height: 30px;
+  font-size: 12px;
+}
+
 .header-actions-group .github-link,
-.header-actions-group .lang-select-wrap {
+.header-actions-group .header-toolbar-control {
   border: none;
   background: transparent;
-  border-radius: 8px;
+  border-radius: 7px;
+  min-height: 30px;
+}
+
+.header-actions-group .github-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8px;
 }
 
 .header-actions-group .github-link:hover,
-.header-actions-group .lang-select-wrap:hover {
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
+.header-actions-group .header-toolbar-control:hover {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
 .version-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 10px;
   font-size: 12px;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
   color: var(--muted);
-  padding: 4px 8px;
-  border-radius: 6px;
+  border-radius: 10px;
   border: 1px solid var(--border);
-  background: var(--surface);
-  letter-spacing: 0.02em;
+  background: var(--surface2);
+  letter-spacing: 0.03em;
 }
 
 .github-link--icon {

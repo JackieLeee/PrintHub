@@ -12,7 +12,9 @@
     "dev:raw": "pnpm build && electron .",
     "start": "pnpm build && node scripts/run-dev.mjs",
     "pack": "pnpm icons && pnpm build && electron-builder --dir",
-    "dist": "pnpm icons && pnpm build && electron-builder --mac dmg"
+    "dist": "pnpm icons && pnpm build && electron-builder --mac dmg --win nsis",
+    "dist:mac": "pnpm icons && pnpm build && electron-builder --mac dmg",
+    "dist:win": "pnpm icons && pnpm build && electron-builder --win nsis"
   },
   "dependencies": {
     "@virt-printer/bridge": "workspace:*",
@@ -51,7 +53,7 @@
     ],
     "mac": {
       "category": "public.app-category.developer-tools",
-      "target": ["dir"],
+      "target": ["dmg"],
       "icon": "icon.icns",
       "identity": null,
       "extendInfo": {
@@ -60,6 +62,7 @@
       }
     },
     "win": {
+      "icon": "icon.png",
       "target": ["nsis"]
     },
     "linux": {

@@ -8,13 +8,15 @@ interface Props {
   loadingLabel?: string;
 }
 
-/** Top-right header controls (version + preferences). Layout may change per design pick. */
+/** Option A — unified toolbar: theme / language / GitHub + version pill. */
 export function AppHeaderActions({ historyLoading, loadingLabel }: Props) {
   return (
     <div className="header-actions">
       <div className="header-actions-group" aria-label="Preferences">
-        <ThemeSwitcher />
-        <LanguageSwitcher />
+        <ThemeSwitcher compact />
+        <span className="header-actions-divider" aria-hidden="true" />
+        <LanguageSwitcher compact />
+        <span className="header-actions-divider" aria-hidden="true" />
         <GithubLink iconOnly />
       </div>
       <VersionBadge />
