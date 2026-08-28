@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -26,6 +27,7 @@ jobs:
           cache: pnpm
 
       - name: Verify tag matches desktop version
+        if: github.event_name == 'push'
         run: |
           TAG="${GITHUB_REF_NAME#v}"
           PKG=$(node -p "require('./apps/desktop/package.json').version")
@@ -36,13 +38,23 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: Build web UI for desktop
+        run: pnpm build:web:desktop
+
+      - name: Build workspace packages
+        run: |
+          pnpm --filter @virt-printer/shared build
+          pnpm --filter @virt-printer/tspl build
+          pnpm --filter @virt-printer/bridge build
+
       - name: Build macOS universal DMG
-        run: pnpm dist:desktop
+        run: pnpm --filter @virt-printer/desktop dist
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.ref_name }}
           files: apps/desktop/release/*.dmg
           generate_release_notes: true
