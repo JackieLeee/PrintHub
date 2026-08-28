@@ -38,12 +38,17 @@
 
 Bridge 内置于 Electron。TCP **9100** 始终可用；局域网 HTTP **默认关闭**，可在托盘中开启。
 
-安装包见 [Releases](https://github.com/JackieLeee/PrintHub/releases)（**macOS universal** `.dmg`，Apple 芯片 + Intel 通用）。
+安装包见 [Releases](https://github.com/JackieLeee/PrintHub/releases)：
+
+| DMG | 适用 | 体积 |
+|-----|------|------|
+| `*-arm64.dmg` | Apple 芯片（M 系列） | ~110 MB |
+| `*-universal.dmg` | Apple 芯片 + Intel | ~200 MB |
 
 ```bash
 pnpm install
 pnpm dev:desktop    # 构建并启动 PrintHub.app
-pnpm dist:desktop   # 打包 macOS universal .dmg
+pnpm dist:desktop   # 同时打包 arm64 与 universal .dmg
 ```
 
 > **未签名说明：** 发布版 **未做 Apple 代码签名**（无 Developer ID）。首次打开时 macOS 可能拦截。请 **右键 PrintHub → 打开**，或在 **系统设置 → 隐私与安全性** 中允许运行。开源项目未购买签名证书时属于正常现象。
