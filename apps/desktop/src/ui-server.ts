@@ -27,10 +27,7 @@ function mimeType(filePath: string): string {
   }
 }
 
-export async function startUiServer(webRoot: string): Promise<number> {
-  await stopUiServer();
-  const root = normalize(`${webRoot}${sep}`);
-
+function listenOnPort(root: string, port: number): Promise<number> {
   return new Promise((resolve, reject) => {
     const next = createServer(async (req, res) => {
       try {
@@ -58,8 +55,11 @@ export async function startUiServer(webRoot: string): Promise<number> {
       }
     });
 
-    next.on("error", reject);
-    next.listen(0, "127.0.0.1", () => {
+    next.on("error", (err: NodeJS.ErrnoException) => {
+      reject(err);
+    });
+
+    next.listen(port, "127.0.0.1", () => {
       server = next;
       const addr = next.address();
       if (!addr || typeof addr === "string") {
@@ -71,6 +71,22 @@ export async function startUiServer(webRoot: string): Promise<number> {
       resolve(boundPort);
     });
   });
+}
+
+export async function startUiServer(webRoot: string, preferredPort = 0): Promise<number> {
+  await stopUiServer();
+  const root = normalize(`${webRoot}${sep}`);
+
+  try {
+    return await listenOnPort(root, preferredPort);
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException).code;
+    if (preferredPort !== 0 && code === "EADDRINUSE") {
+      console.warn(`[desktop] UI port ${preferredPort} busy, picking another`);
+      return listenOnPort(root, 0);
+    }
+    throw err;
+  }
 }
 
 export async function stopUiServer(): Promise<void> {

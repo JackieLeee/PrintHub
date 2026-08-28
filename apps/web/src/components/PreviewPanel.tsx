@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { StoredJob } from "../App";
 import { isTsplPayload } from "@virt-printer/tspl";
 import { useLocale } from "../i18n/context";
+import { formatDuration } from "../lib/format-duration";
+import { showToast } from "../lib/toast";
 import {
   copyText,
   defaultPayloadFilename,
@@ -58,11 +60,9 @@ export function PreviewPanel({
 }: Props) {
   const { t, format } = useLocale();
   const previewHostRef = useRef<HTMLDivElement>(null);
-  const [exportMsg, setExportMsg] = useState<string | null>(null);
   const [view, setView] = useState<PreviewViewTransform>(DEFAULT_VIEW);
 
   useEffect(() => {
-    setExportMsg(null);
     setView(DEFAULT_VIEW);
   }, [job?.id]);
 
@@ -106,18 +106,18 @@ export function PreviewPanel({
   async function onCopyHex() {
     try {
       await copyText(payloadToHexCompact(job!.payload));
-      setExportMsg(t.export.copiedHex);
+      showToast(t.export.copiedHex, "ok");
     } catch {
-      setExportMsg(t.export.copyFailed);
+      showToast(t.export.copyFailed, "err");
     }
   }
 
   async function onCopyBase64() {
     try {
       await copyText(payloadToBase64(job!.payload));
-      setExportMsg(t.export.copiedBase64);
+      showToast(t.export.copiedBase64, "ok");
     } catch {
-      setExportMsg(t.export.copyFailed);
+      showToast(t.export.copyFailed, "err");
     }
   }
 
@@ -125,106 +125,115 @@ export function PreviewPanel({
     try {
       const text = payloadToCommands(job!.payload);
       await copyText(text);
-      setExportMsg(
+      showToast(
         payloadCommandsAreRoundTrip(job!.payload) ? t.export.copiedCommands : t.export.copiedCommandsPartial,
+        "ok",
       );
     } catch {
-      setExportMsg(t.export.copyFailed);
+      showToast(t.export.copyFailed, "err");
     }
   }
 
   function onDownload() {
     downloadPayload(job!.payload, filename);
-    setExportMsg(t.export.downloaded);
+    showToast(t.export.downloaded, "ok");
   }
 
   const protocol = job.protocol === "tspl" || isTsplPayload(job.payload) ? "tspl" : job.protocol;
 
   return (
     <div className="preview-wrap">
-      <div className="preview-meta">
-        <span className={`tag ${protocol}`}>{protocol.toUpperCase()}</span>
-        <span>{job.sourceIp}</span>
-        <span>{job.byteLength} bytes</span>
-        {paperWidth != null && protocol === "escpos" && (
-          <span className="preview-paper">{format(t.preview.paperWidth, { n: paperWidth })}</span>
-        )}
-        {labelSize != null && protocol === "tspl" && (
-          <span className="preview-paper">{format(t.preview.labelSize, { size: labelSize })}</span>
-        )}
-      </div>
-
-      <div className="export-toolbar">
-        <button type="button" className="btn-sm" onClick={onDownload}>
-          {t.export.download}
-        </button>
-        <button type="button" className="btn-sm" onClick={() => void onCopyHex()}>
-          {t.export.copyHex}
-        </button>
-        <button type="button" className="btn-sm" onClick={() => void onCopyBase64()}>
-          {t.export.copyBase64}
-        </button>
-        <button type="button" className="btn-sm" onClick={() => void onCopyCommands()}>
-          {t.export.copyCommands}
-        </button>
-        {exportMsg && <span className="export-msg">{exportMsg}</span>}
-      </div>
-
-      {previewReady && (
-        <div className="preview-view-toolbar">
-          <button
-            type="button"
-            className="btn-sm btn-icon"
-            title={t.preview.rotateLeft}
-            aria-label={t.preview.rotateLeft}
-            onClick={() =>
-              setView((v) => ({ ...v, rotation: ((v.rotation + 270) % 360) as PreviewViewTransform["rotation"] }))
-            }
-          >
-            <RotateLeftIcon />
-          </button>
-          <button
-            type="button"
-            className="btn-sm btn-icon"
-            title={t.preview.rotateRight}
-            aria-label={t.preview.rotateRight}
-            onClick={() =>
-              setView((v) => ({ ...v, rotation: ((v.rotation + 90) % 360) as PreviewViewTransform["rotation"] }))
-            }
-          >
-            <RotateRightIcon />
-          </button>
-          <button
-            type="button"
-            className={`btn-sm btn-icon${view.mirrorH ? " active" : ""}`}
-            title={t.preview.mirrorH}
-            aria-label={t.preview.mirrorH}
-            onClick={() => setView((v) => ({ ...v, mirrorH: !v.mirrorH }))}
-          >
-            <MirrorHorizontalIcon />
-          </button>
-          <button
-            type="button"
-            className={`btn-sm btn-icon${view.mirrorV ? " active" : ""}`}
-            title={t.preview.mirrorV}
-            aria-label={t.preview.mirrorV}
-            onClick={() => setView((v) => ({ ...v, mirrorV: !v.mirrorV }))}
-          >
-            <MirrorVerticalIcon />
-          </button>
-          <button
-            type="button"
-            className="btn-sm btn-icon-text"
-            disabled={!viewAdjusted}
-            title={t.preview.resetView}
-            aria-label={t.preview.resetView}
-            onClick={() => setView(DEFAULT_VIEW)}
-          >
-            <ResetViewIcon />
-            <span>{t.preview.resetView}</span>
-          </button>
+      <div className="preview-toolbar">
+        <div className="preview-meta">
+          <span className={`tag ${protocol}`}>{protocol.toUpperCase()}</span>
+          <span>{job.sourceIp}</span>
+          <span>{job.byteLength} bytes</span>
+          {paperWidth != null && protocol === "escpos" && (
+            <span className="preview-paper">{format(t.preview.paperWidth, { n: paperWidth })}</span>
+          )}
+          {labelSize != null && protocol === "tspl" && (
+            <span className="preview-paper">{format(t.preview.labelSize, { size: labelSize })}</span>
+          )}
+          {job.durationMs != null && (
+            <span className="preview-duration">
+              {format(t.preview.durationMs, { duration: formatDuration(job.durationMs) })}
+            </span>
+          )}
         </div>
-      )}
+
+        <div className="preview-toolbar-actions">
+          <div className="segmented-toolbar" role="group" aria-label={t.export.download}>
+            <button type="button" className="segmented-btn" onClick={onDownload}>
+              {t.export.download}
+            </button>
+            <button type="button" className="segmented-btn" onClick={() => void onCopyHex()}>
+              {t.export.copyHex}
+            </button>
+            <button type="button" className="segmented-btn" onClick={() => void onCopyBase64()}>
+              {t.export.copyBase64}
+            </button>
+            <button type="button" className="segmented-btn" onClick={() => void onCopyCommands()}>
+              {t.export.copyCommands}
+            </button>
+          </div>
+
+          {previewReady && (
+            <div className="segmented-toolbar segmented-toolbar--icons" role="group" aria-label={t.preview.resetView}>
+              <button
+                type="button"
+                className="segmented-btn segmented-btn--icon"
+                title={t.preview.rotateLeft}
+                aria-label={t.preview.rotateLeft}
+                onClick={() =>
+                  setView((v) => ({ ...v, rotation: ((v.rotation + 270) % 360) as PreviewViewTransform["rotation"] }))
+                }
+              >
+                <RotateLeftIcon />
+              </button>
+              <button
+                type="button"
+                className="segmented-btn segmented-btn--icon"
+                title={t.preview.rotateRight}
+                aria-label={t.preview.rotateRight}
+                onClick={() =>
+                  setView((v) => ({ ...v, rotation: ((v.rotation + 90) % 360) as PreviewViewTransform["rotation"] }))
+                }
+              >
+                <RotateRightIcon />
+              </button>
+              <button
+                type="button"
+                className={`segmented-btn segmented-btn--icon${view.mirrorH ? " active" : ""}`}
+                title={t.preview.mirrorH}
+                aria-label={t.preview.mirrorH}
+                onClick={() => setView((v) => ({ ...v, mirrorH: !v.mirrorH }))}
+              >
+                <MirrorHorizontalIcon />
+              </button>
+              <button
+                type="button"
+                className={`segmented-btn segmented-btn--icon${view.mirrorV ? " active" : ""}`}
+                title={t.preview.mirrorV}
+                aria-label={t.preview.mirrorV}
+                onClick={() => setView((v) => ({ ...v, mirrorV: !v.mirrorV }))}
+              >
+                <MirrorVerticalIcon />
+              </button>
+              <button
+                type="button"
+                className="segmented-btn segmented-btn--icon-text"
+                disabled={!viewAdjusted}
+                title={t.preview.resetView}
+                aria-label={t.preview.resetView}
+                onClick={() => setView(DEFAULT_VIEW)}
+              >
+                <ResetViewIcon />
+                <span>{t.preview.resetView}</span>
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
 
       {warnings.length > 0 && (
         <details className="parse-warnings">

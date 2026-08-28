@@ -110,6 +110,13 @@ export function registerBridgeIpc(ctx: BridgeIpcContext): void {
     const event = bridge.kickCashDrawer(Number(pin) || 0, LOCAL_UI_IP);
     return { ok: true, event };
   });
+
+  ipcMain.handle("desktop:clear-sim-events", () => {
+    const bridge = ctx.getBridge();
+    if (!bridge) throw new Error("bridge not running");
+    bridge.clearSimEvents();
+    return { ok: true };
+  });
 }
 
 export function encodePayloadForIpc(payload: Uint8Array): string {

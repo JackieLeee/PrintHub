@@ -105,11 +105,17 @@ export function startHttpServer(options: HttpServerOptions): Server {
       return;
     }
 
+    if (req.method === "POST" && url.pathname === "/sim/events/clear") {
+      bridge.clearSimEvents();
+      sendJson(res, 200, { ok: true });
+      return;
+    }
+
     if (req.method === "GET" && url.pathname === "/" && !webRoot) {
       sendJson(res, 503, {
         error: "web ui not built",
         hint: "Run from repo root: pnpm install && pnpm start",
-        api: ["/health", "/status", "/print/raw", "/sim/config", "/sim/drawer/kick"],
+        api: ["/health", "/status", "/print/raw", "/sim/config", "/sim/drawer/kick", "/sim/events/clear"],
       });
       return;
     }

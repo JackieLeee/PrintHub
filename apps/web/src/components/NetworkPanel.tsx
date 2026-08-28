@@ -1,8 +1,7 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { DeviceConnection, HubStatus, WsClientInfo } from "@virt-printer/shared";
 import { DEFAULT_HTTP_PORT, DEFAULT_TCP_PORT, DEFAULT_WS_PORT, MDNS_PRINTER_SERVICE_TYPE } from "@virt-printer/shared";
 import { useLocale } from "../i18n/context";
-import { isDesktopApp } from "../lib/is-desktop";
 
 interface Props {
   status: HubStatus | null;
@@ -104,25 +103,6 @@ export function NetworkPanel({
         : t.network.bridgeOnline
       : t.network.waitingBridge;
 
-  const [lanCopied, setLanCopied] = useState(false);
-
-  async function copyLanAddress() {
-    try {
-      if (desktopMode && isDesktopApp() && window.printhubDesktop) {
-        const url = await window.printhubDesktop.copyLanUrl();
-        if (!url) return;
-      } else if (lanUiUrl) {
-        await navigator.clipboard.writeText(lanUiUrl);
-      } else {
-        return;
-      }
-      setLanCopied(true);
-      window.setTimeout(() => setLanCopied(false), 2000);
-    } catch {
-      /* clipboard denied */
-    }
-  }
-
   return (
     <div className="network-panel network-panel-compact">
       {showBridgeSetup && (
@@ -143,13 +123,12 @@ export function NetworkPanel({
         </div>
       )}
 
-      {desktopMode && lanUiUrl && (
+      {lanUiUrl && (
         <div className="network-lan">
           <span className="network-lan-label">{t.network.lanAccess}</span>
-          <code className="network-lan-url">{lanUiUrl}</code>
-          <button type="button" className="btn-sm" onClick={() => void copyLanAddress()}>
-            {lanCopied ? t.network.desktopCopiedLan : t.network.desktopCopyLan}
-          </button>
+          <a className="network-lan-link" href={lanUiUrl} target="_blank" rel="noopener noreferrer">
+            {lanUiUrl}
+          </a>
         </div>
       )}
 

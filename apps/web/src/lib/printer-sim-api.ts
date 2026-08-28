@@ -46,3 +46,13 @@ export async function kickCashDrawer(httpBase: string, pin = 0): Promise<Printer
   const body = (await res.json()) as { event?: PrinterSimEvent };
   return body.event ?? null;
 }
+
+export async function clearSimEvents(httpBase: string): Promise<void> {
+  if (isDesktopApp() && window.printhubDesktop) {
+    await window.printhubDesktop.clearSimEvents();
+    return;
+  }
+
+  const res = await fetch(`${httpBase}/sim/events/clear`, { method: "POST" });
+  if (!res.ok) throw new Error(`sim events clear ${res.status}`);
+}

@@ -456,6 +456,20 @@ function installApplicationMenu(): void {
 
   if (process.platform === "darwin") {
     template.push({
+      label: "Edit",
+      submenu: [
+        { role: "undo" },
+        { role: "redo" },
+        { type: "separator" },
+        { role: "cut" },
+        { role: "copy" },
+        { role: "paste" },
+        { role: "pasteAndMatchStyle" },
+        { role: "delete" },
+        { role: "selectAll" },
+      ],
+    });
+    template.push({
       label: "PrintHub",
       submenu: [
         { role: "about" },
@@ -470,6 +484,19 @@ function installApplicationMenu(): void {
       ],
     });
   } else {
+    template.push({
+      label: "Edit",
+      submenu: [
+        { role: "undo" },
+        { role: "redo" },
+        { type: "separator" },
+        { role: "cut" },
+        { role: "copy" },
+        { role: "paste" },
+        { role: "delete" },
+        { role: "selectAll" },
+      ],
+    });
     template.push({
       label: "PrintHub",
       submenu: [...buildServiceMenuItems(), { type: "separator" }, quitMenuItem()],
@@ -638,7 +665,11 @@ async function bootstrap(): Promise<void> {
   }
 
   try {
-    await startUiServer(webRoot);
+    const uiPort = await startUiServer(webRoot, settings.uiServerPort ?? 0);
+    if (uiPort !== settings.uiServerPort) {
+      settings = { ...settings, uiServerPort: uiPort };
+      saveSettings(settings);
+    }
   } catch (err) {
     dialog.showErrorBox(
       "UI 启动失败",

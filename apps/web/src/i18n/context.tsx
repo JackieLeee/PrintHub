@@ -15,14 +15,21 @@ const STORAGE_KEY = "virt-printer-locale";
 
 const catalogs: Record<Locale, Translations> = { zh, en };
 
+function resolveSystemLocale(): Locale {
+  if (typeof navigator === "undefined") return "en";
+  const langs = navigator.languages?.length ? navigator.languages : [navigator.language];
+  for (const lang of langs) {
+    if (!lang) continue;
+    if (lang.toLowerCase().startsWith("zh")) return "zh";
+  }
+  return "en";
+}
+
 function readInitialLocale(): Locale {
   if (typeof window === "undefined") return "en";
-  const params = new URLSearchParams(window.location.search);
-  const lang = params.get("lang");
-  if (lang === "en" || lang === "zh") return lang;
   const saved = localStorage.getItem(STORAGE_KEY);
   if (saved === "en" || saved === "zh") return saved;
-  return "en";
+  return resolveSystemLocale();
 }
 
 interface LocaleContextValue {

@@ -1,6 +1,12 @@
 import { randomUUID } from "node:crypto";
-import type { PrinterSimConfig, PrinterSimEvent, PrinterSimScenario } from "@virt-printer/shared";
-import { DEFAULT_PRINTER_SIM_CONFIG, MAX_SIM_EVENTS } from "@virt-printer/shared";
+import type { PrinterSimConfig, PrinterSimEvent } from "@virt-printer/shared";
+import {
+  DEFAULT_PRINTER_SIM_CONFIG,
+  isFaultScenario,
+  MAX_PRINT_DELAY_MS,
+  MAX_SIM_EVENTS,
+  MAX_STATUS_DELAY_MS,
+} from "@virt-printer/shared";
 
 export interface CashDrawerKick {
   pin: number;
@@ -14,11 +20,19 @@ export function resolveSimConfig(partial?: Partial<PrinterSimConfig>): PrinterSi
     ...DEFAULT_PRINTER_SIM_CONFIG,
     ...partial,
     scenario: partial?.scenario ?? DEFAULT_PRINTER_SIM_CONFIG.scenario,
-    statusDelayMs: Math.max(0, Math.min(5000, partial?.statusDelayMs ?? DEFAULT_PRINTER_SIM_CONFIG.statusDelayMs)),
+    statusDelayMs: Math.max(
+      0,
+      Math.min(MAX_STATUS_DELAY_MS, partial?.statusDelayMs ?? DEFAULT_PRINTER_SIM_CONFIG.statusDelayMs),
+    ),
+    printDelayMs: Math.max(
+      0,
+      Math.min(MAX_PRINT_DELAY_MS, partial?.printDelayMs ?? DEFAULT_PRINTER_SIM_CONFIG.printDelayMs),
+    ),
+    blockPrintOnFault: partial?.blockPrintOnFault ?? DEFAULT_PRINTER_SIM_CONFIG.blockPrintOnFault,
   };
 }
 
-export function dleEotStatusByte(n: number, scenario: PrinterSimScenario): number {
+export function dleEotStatusByte(n: number, scenario: PrinterSimConfig["scenario"]): number {
   if (scenario === "offline") return 0x00;
   if (scenario === "paper-out" && (n === 2 || n === 4)) return 0x04;
   if (scenario === "cover-open" && n === 2) return 0x20;
@@ -50,12 +64,18 @@ export function findCashDrawerKicks(payload: Uint8Array): CashDrawerKick[] {
   return hits;
 }
 
+type EventExtra = Pick<PrinterSimEvent, "pollN" | "pollByte" | "jobBytes" | "durationMs" | "ackMs">;
+
 export class PrinterSimState {
   private config: PrinterSimConfig = { ...DEFAULT_PRINTER_SIM_CONFIG };
   private events: PrinterSimEvent[] = [];
 
   getConfig(): PrinterSimConfig {
     return { ...this.config };
+  }
+
+  clearEvents(): void {
+    this.events = [];
   }
 
   getEvents(): PrinterSimEvent[] {
@@ -72,11 +92,19 @@ export class PrinterSimState {
   }
 
   shouldRejectPrint(): boolean {
-    return this.config.scenario === "reject-job" || this.config.rejectPrint;
+    if (this.config.scenario === "reject-job" || this.config.rejectPrint) return true;
+    if (this.config.blockPrintOnFault && isFaultScenario(this.config.scenario)) return true;
+    return false;
   }
 
   statusDelayMs(): number {
-    return this.config.scenario === "slow" ? Math.max(500, this.config.statusDelayMs) : this.config.statusDelayMs;
+    return this.config.scenario === "slow"
+      ? Math.max(500, this.config.statusDelayMs)
+      : this.config.statusDelayMs;
+  }
+
+  printDelayMs(): number {
+    return this.config.printDelayMs;
   }
 
   isOffline(): boolean {
@@ -87,6 +115,7 @@ export class PrinterSimState {
     kind: PrinterSimEvent["kind"],
     detail: string,
     sourceIp?: string,
+    extra?: EventExtra,
   ): PrinterSimEvent | null {
     if (!this.config.logEvents && kind !== "scenario-change") return null;
     const event: PrinterSimEvent = {
@@ -95,6 +124,7 @@ export class PrinterSimState {
       kind,
       detail,
       sourceIp,
+      ...extra,
     };
     this.events = [event, ...this.events].slice(0, MAX_SIM_EVENTS);
     return event;
@@ -102,10 +132,19 @@ export class PrinterSimState {
 
   recordStatusPoll(sourceIp: string, n: number): PrinterSimEvent | null {
     const byte = dleEotStatusByte(n, this.config.scenario);
-    return this.pushEvent("status-poll", `DLE EOT ${n} → 0x${byte.toString(16).padStart(2, "0")}`, sourceIp);
+    return this.pushEvent("status-poll", `DLE EOT ${n} → 0x${byte.toString(16).padStart(2, "0")}`, sourceIp, {
+      pollN: n,
+      pollByte: byte,
+    });
   }
 
-  recordCashDrawer(sourceIp: string, pin: number, pulseOn: number, pulseOff: number, manual = false): PrinterSimEvent | null {
+  recordCashDrawer(
+    sourceIp: string,
+    pin: number,
+    pulseOn: number,
+    pulseOff: number,
+    manual = false,
+  ): PrinterSimEvent | null {
     return this.pushEvent(
       manual ? "manual-drawer" : "cash-drawer",
       `ESC p pin=${pin} t1=${pulseOn} t2=${pulseOff}`,
@@ -114,7 +153,21 @@ export class PrinterSimState {
   }
 
   recordJobRejected(sourceIp: string, bytes: number): PrinterSimEvent | null {
-    return this.pushEvent("job-rejected", `Rejected print job (${bytes} bytes)`, sourceIp);
+    return this.pushEvent("job-rejected", `Rejected print job (${bytes} bytes)`, sourceIp, { jobBytes: bytes });
+  }
+
+  recordJobCompleted(
+    sourceIp: string,
+    bytes: number,
+    durationMs: number,
+    ackMs?: number,
+  ): PrinterSimEvent | null {
+    return this.pushEvent(
+      "job-completed",
+      `Print job (${bytes} bytes) · ${durationMs} ms` + (ackMs != null ? ` · ACK ${ackMs} ms` : ""),
+      sourceIp,
+      { jobBytes: bytes, durationMs, ackMs },
+    );
   }
 
   scanPayloadForDrawer(payload: Uint8Array, sourceIp: string): PrinterSimEvent[] {

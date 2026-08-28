@@ -22,10 +22,11 @@
 | **接收** | TCP **9100** 接收 ESC/POS 小票与 TSPL 标签 |
 | **预览** | Canvas 小票/标签预览 — ESC/POS（文本、位图、Code128、QR、反白、钱箱标记）与 TSPL 标签 |
 | **历史** | 浏览器本地保存最近 **50** 条任务，支持回放与导出（File / Hex / Base64）；侧栏显示总数 |
-| **调试** | 一键 ESC/POS & TSPL Sample；File / Hex / Base64 原始提交 — **可离线**（无需 Bridge 本地预览） |
-| **命令手册** | 调试面板内可折叠的 ESC/POS & TSPL 命令参考（带展开箭头） |
-| **主题与语言** | 10 套 UI 主题，名称支持 **中文 / English**；右上角工具栏可切换语言 |
-| **打印机模拟** | 场景模拟（正常、缺纸、开盖、离线、慢响应、拒打）、DLE EOT 状态字节、钱箱脉冲检测、实时事件日志（最近 **50** 条） |
+| **调试** | 一键 ESC/POS & TSPL Sample；File / Hex / Base64 原始提交 — **可离线**（无需 Bridge 本地预览）；清空二次确认、切换 Tab 确认、文件拖拽区 |
+| **工作台** | 可折叠 **工作台**：左侧常驻 **虚拟打印机**，右侧 **网络与端口** / **调试打印** Tab 互斥；顶栏显示场景、Bridge 状态、IP、连接数 |
+| **命令手册** | 调试打印内联 ESC/POS & TSPL 命令参考（左侧 chevron，分类折叠） |
+| **主题与语言** | 10 套 UI 主题，名称支持 **中文 / English**；Header 弹出式切换；**持久化**（localStorage；桌面端另复用稳定 UI 端口） |
+| **打印机模拟** | 场景模拟（正常、缺纸、开盖、**离线 = 拒绝 TCP**、慢响应、拒打）、DLE EOT 状态字节、钱箱脉冲检测、实时事件日志（最近 **50** 条，可清除） |
 | **桌面应用** | Electron 集成 Bridge、菜单栏托盘、可选局域网 HTTP/WebSocket |
 | **mDNS** | 广播 `_pdl-datastream._tcp` · 端口 **9100**，便于 POS / macOS 自动发现打印机 |
 
@@ -48,6 +49,8 @@ pnpm dist:desktop   # 打包 macOS .dmg（arm64）
 
 托盘菜单：Bridge / TCP / 局域网状态、复制局域网地址、HTTP 端口、重启 Bridge、退出。
 
+主题与语言选择会跨会话记住。嵌入式 UI 服务器绑定 **稳定的 localhost 端口**（写入 `settings.json`），以便浏览器存储在重启后仍然有效。
+
 ### Web 演示（GitHub Pages）
 
 每次推送到 `main` 会自动部署 GitHub Pages，可用于浏览界面、切换主题，以及 **离线** 调试预览（File / Hex / Base64）。TCP 打印、打印机模拟与局域网功能仍需本地 Bridge 或桌面应用。
@@ -56,20 +59,21 @@ pnpm dist:desktop   # 打包 macOS .dmg（arm64）
 
 ### 打印机模拟
 
-在 **调试打印** 右侧面板可模拟打印机行为，便于联调：
+**工作台**（点击顶栏展开）左侧常驻 **虚拟打印机**，右侧在 **网络与端口** 与 **调试打印** 之间切换：
 
 | 场景 | 行为 |
 |------|------|
 | **正常** | 标准 DLE EOT 状态响应 |
-| **缺纸** | 状态轮询返回缺纸位 |
-| **开盖** | 状态轮询返回开盖位 |
-| **离线** | 状态字节为 0 |
+| **缺纸** | 状态轮询返回缺纸位；TCP 保持连接 |
+| **开盖** | 状态轮询返回开盖位；TCP 保持连接 |
+| **离线** | **拒绝新 TCP 连接**（connection refused）；切换时断开已有连接 |
 | **慢响应** | 可配置状态响应延迟 |
 | **拒打** | 丢弃 TCP 传入的打印任务 |
 
 - **红绿灯指示** — 场景与钱箱状态用绿 / 黄 / 红标识
 - **钱箱** — 紧凑抽屉动画；支持手动开/关；打印数据中的 `ESC p` 开钱箱会被检测并记入事件
-- **模拟事件** — WebSocket `sim.event` 推送；按时间倒序显示，自动去重
+- **模拟事件** — WebSocket `sim.event` 推送；按时间倒序显示，自动去重；耗时人性化显示；支持 **清除**
+- **打印历史** — 侧栏 **清除**（需确认）；清空 IndexedDB 与内存列表
 
 **模拟 HTTP API**（需 Bridge 运行）：
 
@@ -84,6 +88,9 @@ curl -X POST http://localhost:8081/sim/config \
 curl -X POST http://localhost:8081/sim/drawer/kick \
   -H "Content-Type: application/json" \
   -d '{"pin":0}'
+
+# 清除模拟事件日志
+curl -X POST http://localhost:8081/sim/events/clear
 ```
 
 ## 使用方法
@@ -100,8 +107,9 @@ pnpm build:web   # 生产环境 Web UI（shared + tspl + web；CI / GitHub Pages
 1. 打开 **http://localhost:8081**（或本机局域网 IP，如 `http://192.168.1.42:8081`）。
 2. **同网段其他设备**请直接访问 `http://<Bridge机器IP>:8081`，不要使用 GitHub Pages 演示站。
 3. 将 POS / 应用指向 **`<Bridge机器IP>:9100`**。
-4. 展开 **调试打印** — 可试用 Sample、Raw 提交、命令手册或打印机模拟。
-5. 调试预览 **无需 Bridge**；TCP 场景与模拟配置需 Bridge 在 `:8081` 运行。
+4. 展开 **工作台** — 左侧虚拟打印机；右侧切换 **网络与端口** 或 **调试打印**。
+5. 在 **调试打印** 中可试用 Sample、Raw 提交、内联命令手册或切换模拟场景。
+6. 调试预览 **无需 Bridge**；TCP 场景与模拟配置需 Bridge 在 `:8081` 运行。
 
 > **局域网连不上？** 确认 Bridge 已运行（`pnpm start`）、macOS 防火墙允许 Node 入站，且 POS/Web 使用的是 **Bridge 机器的局域网 IP**，不是 `localhost`。
 

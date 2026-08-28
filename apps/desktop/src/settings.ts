@@ -14,6 +14,8 @@ export interface DesktopSettings {
   menuBarHintDismissed?: boolean;
   /** Menu bar icon variant (same geometry as web favicon, template colors). */
   trayIconVariant?: TrayIconVariant;
+  /** Stable localhost port for the embedded UI server (localStorage origin). */
+  uiServerPort?: number;
 }
 
 const DEFAULTS: DesktopSettings = {
@@ -38,6 +40,13 @@ export function normalizeHttpPort(value: unknown): number {
   return port;
 }
 
+export function normalizeUiServerPort(value: unknown): number | undefined {
+  if (value === undefined || value === null) return undefined;
+  const port = Number(value);
+  if (!Number.isInteger(port) || port < 1024 || port > 65535) return undefined;
+  return port;
+}
+
 function settingsPath(): string {
   return join(app.getPath("userData"), "settings.json");
 }
@@ -55,6 +64,7 @@ export function loadSettings(): DesktopSettings {
       autoLaunch: Boolean(raw.autoLaunch),
       menuBarHintDismissed: Boolean(raw.menuBarHintDismissed),
       trayIconVariant: normalizeTrayIconVariant(raw.trayIconVariant),
+      uiServerPort: normalizeUiServerPort(raw.uiServerPort),
     };
   } catch {
     return { ...DEFAULTS };

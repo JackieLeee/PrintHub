@@ -37,6 +37,7 @@ interface PrintHubDesktopApi {
   getSimConfig: () => Promise<PrinterSimConfig>;
   setSimConfig: (partial: Partial<PrinterSimConfig>) => Promise<PrinterSimConfig>;
   kickDrawer: (pin?: number) => Promise<{ ok: boolean; event: PrinterSimEvent | null }>;
+  clearSimEvents: () => Promise<{ ok: boolean }>;
   getLanUrl: () => Promise<string | null>;
   setLanHttpEnabled: (enabled: boolean) => Promise<DesktopSettingsView>;
   setHttpPort: (port: number) => Promise<DesktopSettingsView>;

@@ -43,6 +43,8 @@ contextBridge.exposeInMainWorld("printhubDesktop", {
       ok: boolean;
       event: PrinterSimEvent | null;
     }>,
+  clearSimEvents: () =>
+    ipcRenderer.invoke("desktop:clear-sim-events") as Promise<{ ok: boolean }>,
   getLanUrl: () => ipcRenderer.invoke("desktop:get-lan-url") as Promise<string | null>,
   setLanHttpEnabled: (enabled: boolean) =>
     ipcRenderer.invoke("desktop:set-lan-http-enabled", enabled) as Promise<DesktopSettingsView>,

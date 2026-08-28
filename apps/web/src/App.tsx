@@ -8,14 +8,14 @@ import { isMeaningfulPrintJob } from "@virt-printer/escpos";
 import { parseTspl, formatLabelSize, isTsplPayload } from "@virt-printer/tspl";
 import { renderEscPosPreview, renderTsplToCanvas } from "@virt-printer/renderer";
 import { AppHeaderActions } from "./components/AppHeaderActions";
-import { NetworkPanel } from "./components/NetworkPanel";
+import { ToastHost } from "./components/ToastHost";
 import { PrintHistory } from "./components/PrintHistory";
 import { PreviewPanel } from "./components/PreviewPanel";
-import { RawPrintPanel } from "./components/RawPrintPanel";
-import { PrinterSimPanel } from "./components/PrinterSimPanel";
+import { WorkbenchPanel, type WorkbenchRightTab } from "./components/WorkbenchPanel";
 import { createLocalJobMeta, LOCAL_HUB_ID } from "./lib/local-job";
 import { prependSimEvent } from "./lib/local-sim";
-import { flushHistory, loadJobs, recordToJob, saveJob } from "./store/history";
+import { clearJobs, flushHistory, loadJobs, recordToJob, saveJob } from "./store/history";
+import { clearSimEvents } from "./lib/printer-sim-api";
 import { useLocale } from "./i18n/context";
 import {
   bridgeBaseToWsUrl,
@@ -48,8 +48,8 @@ export function App() {
   const [jobs, setJobs] = useState<StoredJob[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [historyReady, setHistoryReady] = useState(false);
-  const [openPanel, setOpenPanel] = useState<"network" | "debug" | null>("network");
-  const [cmdRefOpen, setCmdRefOpen] = useState(false);
+  const [workbenchOpen, setWorkbenchOpen] = useState(true);
+  const [rightTab, setRightTab] = useState<WorkbenchRightTab>("network");
   const clientRef = useRef<RelayClient | DesktopRelayClient | null>(null);
   const activeHubIdRef = useRef<string>("");
   const desktopShell = isDesktopShell();
@@ -74,6 +74,26 @@ export function App() {
         : prev,
     );
   }, []);
+
+  const handleClearSimEvents = useCallback(async () => {
+    try {
+      await clearSimEvents(httpBase);
+      setStatus((prev) => (prev ? { ...prev, simEvents: [] } : prev));
+    } catch {
+      /* bridge offline — local clear only */
+      setStatus((prev) => (prev ? { ...prev, simEvents: [] } : prev));
+    }
+  }, [httpBase]);
+
+  const handleClearHistory = useCallback(async () => {
+    if (!window.confirm(t.history.clearConfirm)) return;
+    const hubIds = new Set([activeHubIdRef.current || LOCAL_HUB_ID, LOCAL_HUB_ID]);
+    for (const hubId of hubIds) {
+      await clearJobs(hubId);
+    }
+    setJobs([]);
+    setSelectedId(null);
+  }, [t.history.clearConfirm]);
 
   const reloadHistory = useCallback(async (hubId: string) => {
     const hubRecords = await loadJobs(hubId);
@@ -300,19 +320,10 @@ export function App() {
   const tcpPort = status?.tcpPort ?? DEFAULT_TCP_PORT;
   const hostIp = status?.hostIp;
 
-  const togglePanel = useCallback((panel: "network" | "debug") => {
-    setOpenPanel((current) => {
-      const next = current === panel ? null : panel;
-      if (next !== "debug") setCmdRefOpen(false);
-      return next;
-    });
-  }, []);
-
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") {
-        setOpenPanel(null);
-        setCmdRefOpen(false);
+        setWorkbenchOpen(false);
       }
     }
     window.addEventListener("keydown", onKeyDown);
@@ -321,6 +332,7 @@ export function App() {
 
   return (
     <div className="app app--preview-first">
+      <ToastHost />
       <header className="header">
         <div>
           <h1>{t.app.title}</h1>
@@ -336,84 +348,34 @@ export function App() {
         />
       </header>
 
-      <div className="toolbelt">
-        <button
-          type="button"
-          className={`toolbelt-btn ${openPanel === "network" ? "active" : ""}`}
-          aria-expanded={openPanel === "network"}
-          onClick={() => togglePanel("network")}
-        >
-          {t.toolbelt.network} {openPanel === "network" ? "▴" : "▾"}
-        </button>
-        <button
-          type="button"
-          className={`toolbelt-btn ${openPanel === "debug" ? "active" : ""}`}
-          aria-expanded={openPanel === "debug"}
-          onClick={() => togglePanel("debug")}
-        >
-          {t.toolbelt.debug} {openPanel === "debug" ? "▴" : "▾"}
-        </button>
-        <span className={`pill ${(desktopMode ? Boolean(status?.listening) : connected) ? "ok" : "warn"}`}>
-          {desktopMode
-            ? status?.listening
-              ? t.network.bridgeOnline
-              : t.network.waitingBridge
-            : connected
-              ? t.network.bridgeOnline
-              : t.network.waitingBridge}
-        </span>
-        {hostIp && (
-          <span className="toolbelt-meta">
-            {hostIp} · TCP {tcpPort}
-          </span>
-        )}
-      </div>
-
-      {openPanel === "network" && (
-        <section className="toolbelt-panel panel">
-          <NetworkPanel
-            status={status}
-            connected={connected}
-            wsUrl={desktopMode ? "IPC (desktop)" : wsUrl}
-            bridgeInput={bridgeInput}
-            showBridgeSetup={!desktopMode && (isExternalDemoHost() || (!connected && !isBridgeOrigin()))}
-            lanUiUrl={
-              desktopMode
-                ? status?.httpPort && status.httpPort > 0 && status.hostIp
-                  ? lanUiUrl(status.hostIp, status.httpPort)
-                  : null
-                : hostIp && status?.httpPort
-                  ? lanUiUrl(hostIp, status.httpPort)
-                  : null
-            }
-            desktopMode={desktopMode}
-            onBridgeInputChange={setBridgeInput}
-            onConnectBridge={() => connectBridge()}
-            onReconnect={connect}
-          />
-        </section>
-      )}
-
-      {openPanel === "debug" && (
-        <section className="toolbelt-panel panel debug-top-panel">
-          <p className="debug-top-hint">{t.sections.debugPrintHint}</p>
-          <div className={`debug-panel-split${cmdRefOpen ? " cmd-ref-open" : ""}`}>
-            <div className="debug-panel-main">
-              <RawPrintPanel onPreview={previewLocalJob} onCmdRefOpenChange={setCmdRefOpen} />
-            </div>
-            <div className="debug-panel-divider" aria-hidden="true" />
-            <div className="debug-panel-sim">
-              <PrinterSimPanel
-                httpBase={httpBase}
-                config={status?.printerSim ?? null}
-                events={status?.simEvents ?? []}
-                connected={connected}
-                onConfigChange={applySimConfig}
-              />
-            </div>
-          </div>
-        </section>
-      )}
+      <WorkbenchPanel
+        open={workbenchOpen}
+        onOpenChange={setWorkbenchOpen}
+        rightTab={rightTab}
+        onRightTabChange={setRightTab}
+        status={status}
+        connected={connected}
+        desktopMode={desktopMode}
+        wsUrl={wsUrl}
+        bridgeInput={bridgeInput}
+        showBridgeSetup={!desktopMode && (isExternalDemoHost() || (!connected && !isBridgeOrigin()))}
+        lanUiUrl={
+          desktopMode
+            ? status?.httpPort && status.httpPort > 0 && status.hostIp
+              ? lanUiUrl(status.hostIp, status.httpPort)
+              : null
+            : hostIp && status?.httpPort
+              ? lanUiUrl(hostIp, status.httpPort)
+              : null
+        }
+        httpBase={httpBase}
+        onBridgeInputChange={setBridgeInput}
+        onConnectBridge={() => connectBridge()}
+        onReconnect={connect}
+        onPreview={previewLocalJob}
+        onSimConfigChange={applySimConfig}
+        onSimEventsClear={() => void handleClearSimEvents()}
+      />
 
       <div className="preview-stage">
         <main className="preview-primary panel">
@@ -430,7 +392,17 @@ export function App() {
         <aside className="history-sidebar panel">
           <div className="history-sidebar-head">
             <h2>{t.sections.history}</h2>
-            <span className="history-count">{format(t.history.totalCount, { n: visibleJobs.length })}</span>
+            <div className="history-sidebar-head-actions">
+              <span className="history-count">{format(t.history.totalCount, { n: visibleJobs.length })}</span>
+              <button
+                type="button"
+                className="btn-sm btn-ghost"
+                disabled={visibleJobs.length === 0}
+                onClick={() => void handleClearHistory()}
+              >
+                {t.history.clear}
+              </button>
+            </div>
           </div>
           <PrintHistory
             jobs={visibleJobs}

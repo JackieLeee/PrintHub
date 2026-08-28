@@ -1,12 +1,27 @@
-import type { PrinterSimConfig, PrinterSimEvent } from "./printer-sim.js";
+import type {
+  PrinterSimConfig,
+  PrinterSimEvent,
+  PrinterSimLiveState,
+  TcpQueueEntry,
+} from "./printer-sim.js";
 
 export type {
   PrinterSimScenario,
   PrinterSimEventKind,
   PrinterSimConfig,
   PrinterSimEvent,
+  PrinterSimLiveState,
+  TcpQueueEntry,
+  TcpQueueState,
 } from "./printer-sim.js";
-export { DEFAULT_PRINTER_SIM_CONFIG, MAX_SIM_EVENTS } from "./printer-sim.js";
+export {
+  DEFAULT_PRINTER_SIM_CONFIG,
+  MAX_SIM_EVENTS,
+  MAX_STATUS_DELAY_MS,
+  MAX_PRINT_DELAY_MS,
+  computeSimLiveState,
+  isFaultScenario,
+} from "./printer-sim.js";
 export type { CashDrawerKick } from "./cash-drawer.js";
 export { findCashDrawerKicks } from "./cash-drawer.js";
 
@@ -38,10 +53,16 @@ export interface PrintJobMeta {
   byteLength: number;
   widthMm?: number;
   labelSize?: string;
-  /** e.g. "tcp" | "http" | "image" */
+  /** e.g. "tcp" | "http" | "image" | "raw" | "debug" */
   source?: string;
   /** Hub identifier, typically hostIp:wsPort */
   hubId?: string;
+  /** When Bridge finished handling the job (before broadcast). */
+  processedAt?: number;
+  /** processedAt - receivedAt (ms). */
+  durationMs?: number;
+  /** TCP ACK timing (ms), when applicable. */
+  ackMs?: number;
 }
 
 export interface HubInfo {
@@ -110,6 +131,9 @@ export interface HubStatus {
   wsClients: WsClientInfo[];
   printerSim: PrinterSimConfig;
   simEvents: PrinterSimEvent[];
+  /** Read-only projection of scenario + queue (B+C live state matrix). */
+  simLiveState: PrinterSimLiveState;
+  tcpQueue: TcpQueueEntry[];
   /** mDNS printer service advertised on tcpPort (_pdl-datastream._tcp). */
   mdnsPrinter?: boolean;
 }

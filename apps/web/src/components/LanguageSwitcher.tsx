@@ -1,6 +1,6 @@
 import { useLocale } from "../i18n/context.js";
 import type { Locale } from "../i18n/types.js";
-import { HeaderToolbarSelect } from "./HeaderToolbarSelect.js";
+import { HeaderMenuSelect } from "./HeaderMenuSelect.js";
 
 const LOCALE_FLAGS: Record<Locale, string> = {
   en: "🇺🇸",
@@ -43,7 +43,7 @@ export function LanguageSwitcher({ compact = false }: { compact?: boolean }) {
     >
       <GlobeIcon />
       {compact ? (
-        <HeaderToolbarSelect
+        <HeaderMenuSelect
           value={locale}
           ariaLabel={t.lang.label}
           options={[

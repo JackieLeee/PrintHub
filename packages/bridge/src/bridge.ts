@@ -22,6 +22,8 @@ import {
   TCP_FLUSH_IDLE_MS,
   TCP_IDLE_TIMEOUT_MS,
   WS_PING_INTERVAL_MS,
+  computeSimLiveState,
+  type TcpQueueEntry,
 } from "@virt-printer/shared";
 import { formatLabelSize, isTsplPayload, parseTspl } from "@virt-printer/tspl";
 import { buildJobMessages } from "./chunking.js";
@@ -84,6 +86,45 @@ export class VirtPrinterBridge {
   private mdnsPrinter = false;
   private webRoot: string | null = null;
   private printerSim = new PrinterSimState();
+  private tcpQueues = new Map<string, TcpQueueEntry>();
+  private tcpSockets = new Map<string, Socket>();
+
+  private disconnectAllTcpClients(): void {
+    for (const [sessionId, socket] of this.tcpSockets) {
+      try {
+        socket.destroy();
+      } catch {
+        /* ignore */
+      }
+      this.tcpSockets.delete(sessionId);
+      this.connections.delete(sessionId);
+      this.clearTcpQueue(sessionId);
+      this.broadcast({ type: "connection.close", sessionId });
+    }
+    this.broadcastStatus();
+  }
+
+  private setTcpQueue(sessionId: string, sourceIp: string, patch: Partial<TcpQueueEntry>): void {
+    const prev = this.tcpQueues.get(sessionId) ?? {
+      sessionId,
+      sourceIp,
+      state: "receiving" as const,
+      bufferedBytes: 0,
+    };
+    this.tcpQueues.set(sessionId, { ...prev, ...patch, sessionId, sourceIp });
+  }
+
+  private clearTcpQueue(sessionId: string): void {
+    this.tcpQueues.delete(sessionId);
+  }
+
+  private queueDepth(): number {
+    let depth = 0;
+    for (const entry of this.tcpQueues.values()) {
+      if (entry.state === "queued" || entry.state === "processing") depth += 1;
+    }
+    return depth;
+  }
 
   constructor(options: BridgeOptions = {}) {
     this.hubInstanceId = randomUUID();
@@ -169,8 +210,16 @@ export class VirtPrinterBridge {
 
   setPrinterSimConfig(partial: Partial<PrinterSimConfig>, sourceIp?: string): PrinterSimConfig {
     const config = this.printerSim.setConfig(partial, sourceIp);
+    if (this.printerSim.isOffline()) {
+      this.disconnectAllTcpClients();
+    }
     this.broadcastStatus();
     return config;
+  }
+
+  clearSimEvents(): void {
+    this.printerSim.clearEvents();
+    this.broadcastStatus();
   }
 
   kickCashDrawer(pin = 0, sourceIp = "127.0.0.1"): PrinterSimEvent | null {
@@ -278,6 +327,11 @@ export class VirtPrinterBridge {
   }
 
   private handleTcpConnection(socket: Socket): void {
+    if (this.printerSim.isOffline()) {
+      socket.destroy();
+      return;
+    }
+
     const sessionId = randomUUID();
     const remoteIp = socket.remoteAddress?.replace("::ffff:", "") ?? "unknown";
     const now = Date.now();
@@ -295,18 +349,76 @@ export class VirtPrinterBridge {
     socket.setTimeout(TCP_IDLE_TIMEOUT_MS);
 
     this.connections.set(sessionId, connection);
+    this.tcpSockets.set(sessionId, socket);
     this.broadcast({ type: "connection.open", connection });
     this.broadcastStatus();
 
     const chunks: Buffer[] = [];
     let flushTimer: ReturnType<typeof setTimeout> | null = null;
+    const jobQueue: Array<{ payload: Buffer; receivedAt: number }> = [];
+    let processing = false;
+
+    const drainJobQueue = () => {
+      if (processing || jobQueue.length === 0) return;
+      processing = true;
+      const item = jobQueue.shift()!;
+      this.setTcpQueue(sessionId, remoteIp, {
+        state: "processing",
+        bufferedBytes: item.payload.length,
+      });
+      this.broadcastStatus();
+
+      const run = () => {
+        const processedAt = Date.now();
+        const durationMs = processedAt - item.receivedAt;
+        const meta = this.emitJob(connection, item.payload, "tcp", {
+          receivedAt: item.receivedAt,
+          processedAt,
+        });
+        let ackMs: number | undefined;
+        if (!this.printerSim.isOffline()) {
+          const ackStart = Date.now();
+          try {
+            socket.write(Buffer.from([0x06]));
+            ackMs = Date.now() - ackStart;
+          } catch {
+            /* socket may already be closed */
+          }
+        }
+        const completed = this.printerSim.recordJobCompleted(
+          remoteIp,
+          item.payload.length,
+          durationMs,
+          ackMs,
+        );
+        if (completed) this.broadcast({ type: "sim.event", event: completed });
+        void meta;
+
+        processing = false;
+        if (jobQueue.length > 0) {
+          this.setTcpQueue(sessionId, remoteIp, { state: "queued", bufferedBytes: 0 });
+        } else {
+          this.clearTcpQueue(sessionId);
+        }
+        this.broadcastStatus();
+        drainJobQueue();
+      };
+
+      const delay = this.printerSim.printDelayMs();
+      if (delay > 0) setTimeout(run, delay);
+      else run();
+    };
 
     const flushTcpJob = () => {
       if (chunks.length === 0) return;
       const raw = Buffer.concat(chunks);
       const prepared = prepareTcpPrintPayload(raw);
       chunks.length = 0;
-      if (!prepared) return;
+      if (!prepared) {
+        this.clearTcpQueue(sessionId);
+        this.broadcastStatus();
+        return;
+      }
       const payload = Buffer.from(prepared);
       const protocol = detectProtocol(payload);
       this.printerSim.scanPayloadForDrawer(prepared, remoteIp).forEach((event) => {
@@ -315,17 +427,18 @@ export class VirtPrinterBridge {
       if (this.printerSim.shouldRejectPrint()) {
         const rejected = this.printerSim.recordJobRejected(remoteIp, prepared.length);
         if (rejected) this.broadcast({ type: "sim.event", event: rejected });
+        this.clearTcpQueue(sessionId);
+        this.broadcastStatus();
         return;
       }
       if (isMeaningfulPrintJob(prepared, protocol)) {
-        this.emitJob(connection, payload, "tcp");
-        if (!this.printerSim.isOffline()) {
-          try {
-            socket.write(Buffer.from([0x06]));
-          } catch {
-            /* socket may already be closed */
-          }
-        }
+        jobQueue.push({ payload, receivedAt: Date.now() });
+        this.setTcpQueue(sessionId, remoteIp, {
+          state: jobQueue.length > 1 || processing ? "queued" : "processing",
+          bufferedBytes: 0,
+        });
+        this.broadcastStatus();
+        drainJobQueue();
       }
     };
 
@@ -346,6 +459,10 @@ export class VirtPrinterBridge {
       touch();
       chunks.push(chunk);
       connection.protocol = detectProtocol(Buffer.concat(chunks));
+      this.setTcpQueue(sessionId, remoteIp, {
+        state: processing ? "processing" : "receiving",
+        bufferedBytes: Buffer.concat(chunks).length,
+      });
 
       const simConfig = this.printerSim.getConfig();
       const responses = buildDleEotResponses(chunk, simConfig);
@@ -383,12 +500,15 @@ export class VirtPrinterBridge {
       if (leftover.length > 0) {
         console.log(`[bridge] ignored status/heartbeat from ${remoteIp} (${leftover.length} bytes)`);
       }
+      this.tcpSockets.delete(sessionId);
+      this.clearTcpQueue(sessionId);
       this.connections.delete(sessionId);
       this.broadcast({ type: "connection.close", sessionId });
       this.broadcastStatus();
     });
 
     socket.on("error", () => {
+      this.tcpSockets.delete(sessionId);
       this.connections.delete(sessionId);
       this.broadcastStatus();
     });
@@ -398,14 +518,19 @@ export class VirtPrinterBridge {
     connection: DeviceConnection,
     payload: Buffer,
     source: string,
+    timing?: { receivedAt?: number; processedAt?: number },
   ): PrintJobMeta {
+    const receivedAt = timing?.receivedAt ?? Date.now();
+    const processedAt = timing?.processedAt ?? receivedAt;
     const id = `job-${++this.jobCounter}-${Date.now()}`;
     const meta: PrintJobMeta = {
       id,
       protocol: detectProtocol(payload),
       sourceIp: connection.ip,
       sessionId: connection.sessionId,
-      receivedAt: Date.now(),
+      receivedAt,
+      processedAt,
+      durationMs: processedAt - receivedAt,
       byteLength: payload.length,
       widthMm: connection.protocol === "escpos" ? 58 : undefined,
       labelSize: labelSizeFromPayload(payload),
@@ -423,6 +548,8 @@ export class VirtPrinterBridge {
   }
 
   private getStatus(): HubStatus {
+    const scenario = this.printerSim.getConfig().scenario;
+    const depth = this.queueDepth();
     return {
       hubInstanceId: this.hubInstanceId,
       hostIp: getLocalIp(),
@@ -434,6 +561,8 @@ export class VirtPrinterBridge {
       wsClients: [...this.wsClients.values()].map((c) => c.info),
       printerSim: this.printerSim.getConfig(),
       simEvents: this.printerSim.getEvents(),
+      simLiveState: computeSimLiveState(scenario, depth),
+      tcpQueue: [...this.tcpQueues.values()],
       mdnsPrinter: this.mdnsPrinter,
     };
   }

@@ -9,6 +9,12 @@ export interface Translations {
     network: string;
     debug: string;
   };
+  workbench: {
+    title: string;
+    expand: string;
+    collapse: string;
+    connectionsShort: string;
+  };
   app: {
     title: string;
     subtitle: string;
@@ -57,19 +63,46 @@ export interface Translations {
     hint: string;
     scenario: string;
     statusDelay: string;
+    printDelay: string;
+    blockPrintOnFault: string;
+    liveState: string;
+    liveOnline: string;
+    livePaper: string;
+    liveCover: string;
+    liveQueue: string;
+    stateOnline: string;
+    stateOffline: string;
+    stateOk: string;
+    stateFault: string;
+    tcpQueue: string;
+    queueReceiving: string;
+    queueQueued: string;
+    queueProcessing: string;
+    eventTabAll: string;
+    eventTabPolls: string;
+    eventTabJobs: string;
+    eventTabDrawer: string;
+    pollByte: string;
     openDrawer: string;
     closeDrawer: string;
     drawerOpen: string;
     drawerClosed: string;
     events: string;
     eventsEmpty: string;
+    clearEvents: string;
+    drawerSection: string;
     bridgeRequired: string;
     scenarios: Record<
       "normal" | "paper-out" | "cover-open" | "offline" | "slow" | "reject-job",
       string
     >;
     eventKinds: Record<
-      "status-poll" | "cash-drawer" | "job-rejected" | "scenario-change" | "manual-drawer",
+      | "status-poll"
+      | "cash-drawer"
+      | "job-rejected"
+      | "job-completed"
+      | "scenario-change"
+      | "manual-drawer",
       string
     >;
   };
@@ -82,6 +115,9 @@ export interface Translations {
     receiptWithImage: string;
     label: string;
     labelWithSize: string;
+    durationMs: string;
+    clear: string;
+    clearConfirm: string;
   };
   preview: {
     empty: string;
@@ -89,6 +125,7 @@ export interface Translations {
     rendering: string;
     paperWidth: string;
     labelSize: string;
+    durationMs: string;
     rotateLeft: string;
     rotateRight: string;
     mirrorH: string;
@@ -133,6 +170,20 @@ export interface Translations {
     previewFailed: string;
     fileParseFailed: string;
     decodeFailed: string;
+    loadSample: string;
+    loadEscPosSample: string;
+    loadTsplSample: string;
+    clearInput: string;
+    clearInputConfirm: string;
+    overwriteSampleTitle: string;
+    overwriteSampleBody: string;
+    overwriteConfirm: string;
+    cancel: string;
+    sampleLoaded: string;
+    fileDropHint: string;
+    tabSwitchTitle: string;
+    tabSwitchBody: string;
+    tabSwitchConfirm: string;
   };
   cmdRef: {
     titleTspl: string;

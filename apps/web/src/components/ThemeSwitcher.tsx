@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocale } from "../i18n/context.js";
-import { HeaderToolbarSelect } from "./HeaderToolbarSelect.js";
+import { HeaderMenuSelect } from "./HeaderMenuSelect.js";
 import {
   applyUiTheme,
   loadUiThemeId,
@@ -46,7 +46,7 @@ export function ThemeSwitcher({ compact = false }: { compact?: boolean }) {
     >
       <PaletteIcon />
       {compact ? (
-        <HeaderToolbarSelect
+        <HeaderMenuSelect
           value={themeId}
           ariaLabel={t.theme.label}
           options={UI_THEMES.map((theme) => ({

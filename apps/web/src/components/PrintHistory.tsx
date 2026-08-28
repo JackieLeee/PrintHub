@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import type { StoredJob } from "../App";
 import { payloadHasRaster } from "@virt-printer/escpos";
 import { formatLabelSize, isTsplPayload, parseTspl } from "@virt-printer/tspl";
+import { formatDuration } from "../lib/format-duration";
 import { useLocale } from "../i18n/context";
 import type { Locale } from "../i18n/types";
 
@@ -86,22 +87,33 @@ export function PrintHistory({ jobs, selectedId, onSelect, variant = "sidebar" }
             <button
               ref={isActive ? activeRef : undefined}
               type="button"
-              className={`${itemClass} ${isActive ? "active" : ""}`}
+              className={`${itemClass} history-item--grid ${isActive ? "active" : ""}`}
               onClick={() => onSelect(job.id)}
             >
-              <div className="history-head">
-                <span className={`tag ${job.protocol === "tspl" || isTsplPayload(job.payload) ? "tspl" : job.protocol}`}>
-                  {(job.protocol === "tspl" || isTsplPayload(job.payload) ? "tspl" : job.protocol).toUpperCase()}
-                </span>
-                <span className="history-time">{formatTime(job.receivedAt, locale)}</span>
-              </div>
-              <div className="history-title">{jobTitle(job)}</div>
-              {variant === "sidebar" && (
-                <div className="history-foot">
-                  <span className="history-size">{formatSize(job.byteLength)}</span>
-                  <span className="history-ip">{job.sourceIp}</span>
+              <div className="history-grid">
+                <div className="history-grid-primary">
+                  <span className={`tag ${job.protocol === "tspl" || isTsplPayload(job.payload) ? "tspl" : job.protocol}`}>
+                    {(job.protocol === "tspl" || isTsplPayload(job.payload) ? "tspl" : job.protocol).toUpperCase()}
+                  </span>
+                  <span className="history-title">{jobTitle(job)}</span>
                 </div>
-              )}
+                <span className="history-time">{formatTime(job.receivedAt, locale)}</span>
+                {variant === "sidebar" && (
+                  <>
+                    <div className="history-grid-meta">
+                      <span className="history-size">{formatSize(job.byteLength)}</span>
+                      <span className="history-ip">{job.sourceIp}</span>
+                    </div>
+                    {job.durationMs != null ? (
+                      <span className="history-duration">
+                        {format(t.history.durationMs, { duration: formatDuration(job.durationMs) })}
+                      </span>
+                    ) : (
+                      <span className="history-duration history-duration--empty" aria-hidden="true" />
+                    )}
+                  </>
+                )}
+              </div>
             </button>
           </li>
         );

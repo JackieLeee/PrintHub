@@ -22,10 +22,11 @@ Cash registers, POS apps, and label printers usually send **raw ESC/POS or TSPL*
 | **Receive** | ESC/POS receipts and TSPL labels on TCP **9100** |
 | **Preview** | Canvas receipt/label preview — ESC/POS (text, images, Code128, QR, invert, cash-drawer markers) and TSPL labels |
 | **History** | Recent jobs stored in the browser (last **50**); replay and export (file / hex / Base64); total count in sidebar |
-| **Debug** | One-click ESC/POS & TSPL samples; File / Hex / Base64 raw submit — **works offline** (local preview without Bridge) |
-| **Command reference** | Collapsible ESC/POS & TSPL command manuals in the debug panel (chevron expand/collapse) |
-| **Themes & i18n** | 10 UI themes with **English / 中文** labels; language switcher in the header toolbar |
-| **Printer sim** | Scenario simulation (normal, paper-out, cover-open, offline, slow, reject-job), DLE EOT status bytes, cash-drawer kick detection, live event log (last **50**) |
+| **Debug** | One-click ESC/POS & TSPL samples; File / Hex / Base64 raw submit — **works offline** (local preview without Bridge); two-step clear, tab-switch confirm, file drop zone |
+| **Workbench** | Collapsible **workbench**: virtual printer (left, always visible) + **Network & ports** / **Debug print** tabs (right); header shows scenario, Bridge status, IP, connection count |
+| **Command reference** | Inline ESC/POS & TSPL manuals in debug print (left chevron, embedded categories) |
+| **Themes & i18n** | 10 UI themes with **English / 中文** labels; header popover switchers; **persisted** (localStorage; desktop also reuses a stable UI server port) |
+| **Printer sim** | Scenario simulation (normal, paper-out, cover-open, **offline = reject TCP**, slow, reject-job), DLE EOT status bytes, cash-drawer kick detection, live event log (last **50**, clearable) |
 | **Desktop app** | Electron app with Bridge built-in, menu-bar tray, optional LAN HTTP/WebSocket |
 | **mDNS** | Advertises `_pdl-datastream._tcp` on port **9100** for POS / macOS printer discovery |
 
@@ -48,6 +49,8 @@ pnpm dist:desktop   # build macOS .dmg (arm64)
 
 Tray menu: Bridge / TCP / LAN status, copy LAN URL, HTTP port, restart Bridge, quit.
 
+Theme and language choices are remembered across sessions. The embedded UI server binds to a **stable localhost port** stored in `settings.json` so browser storage survives restarts.
+
 ### Web demo (GitHub Pages)
 
 The UI is deployed to GitHub Pages on every push to `main` — useful for exploring layout, themes, and **offline** debug preview (File / Hex / Base64). TCP print, printer simulation, and LAN features require a local Bridge or the desktop app.
@@ -56,20 +59,21 @@ The UI is deployed to GitHub Pages on every push to `main` — useful for explor
 
 ### Printer simulation
 
-In **Debug print**, the right panel simulates printer behavior for integration testing:
+The **workbench** (expand from the header bar) keeps the **virtual printer** on the left and switches the right panel between **Network & ports** and **Debug print**:
 
 | Scenario | Behavior |
 |----------|----------|
 | **Normal** | Standard DLE EOT status responses |
-| **Paper out** | Paper-out status bits on polls |
-| **Cover open** | Cover-open status bit |
-| **Offline** | Zero status bytes |
+| **Paper out** | Paper-out status bits on polls; TCP stays connected |
+| **Cover open** | Cover-open status bit; TCP stays connected |
+| **Offline** | **Rejects new TCP connections** (connection refused); existing sessions dropped when switched |
 | **Slow** | Configurable status response delay |
 | **Reject job** | Drops incoming TCP print jobs |
 
 - **Traffic-light indicators** — green / yellow / red for scenario and cash-drawer state
 - **Cash drawer** — compact pull-out UI; manual open/close; `ESC p` kicks from print jobs are detected and logged
-- **Sim events** — WebSocket `sim.event` stream; newest first, deduplicated
+- **Sim events** — WebSocket `sim.event` stream; newest first, deduplicated; human-readable durations; **Clear** button
+- **Print history** — sidebar **Clear** with confirmation; clears IndexedDB + in-memory list
 
 **Sim HTTP API** (Bridge must be running):
 
@@ -84,6 +88,9 @@ curl -X POST http://localhost:8081/sim/config \
 curl -X POST http://localhost:8081/sim/drawer/kick \
   -H "Content-Type: application/json" \
   -d '{"pin":0}'
+
+# Clear sim event log
+curl -X POST http://localhost:8081/sim/events/clear
 ```
 
 ## Usage
@@ -99,8 +106,9 @@ pnpm build:web   # production Web UI (shared + tspl + web; used by CI / GitHub P
 
 1. Open **http://localhost:8081** (or your machine’s LAN IP).
 2. Point the POS / app at **`<host>:9100`**.
-3. In the UI, expand **Debug print** — try samples, raw submit, command reference, or printer simulation.
-4. Debug preview works **without Bridge**; TCP scenarios and sim config require Bridge on `:8081`.
+3. Expand the **workbench** — virtual printer on the left; use **Network & ports** or **Debug print** on the right.
+4. In **Debug print**, try samples, raw submit, inline command reference, or change sim scenarios.
+5. Debug preview works **without Bridge**; TCP scenarios and sim config require Bridge on `:8081`.
 
 > **LAN access:** Other devices on the same network should use `http://<bridge-host>:8081`, not `localhost`.
 

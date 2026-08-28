@@ -133,6 +133,33 @@ export async function flushHistory(): Promise<void> {
   await flushPending();
 }
 
+export async function clearJobs(hubId?: string): Promise<void> {
+  await flushHistory();
+  const db = await openDb();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(STORE, "readwrite");
+    const store = tx.objectStore(STORE);
+    if (hubId) {
+      const index = store.index("hubReceivedAt");
+      const range = IDBKeyRange.bound([hubId, 0], [hubId, Number.MAX_SAFE_INTEGER]);
+      const req = index.openCursor(range);
+      req.onsuccess = () => {
+        const cursor = req.result;
+        if (cursor) {
+          const val = cursor.value as StoredJobRecord;
+          if (val.hubId === hubId) cursor.delete();
+          cursor.continue();
+        }
+      };
+      req.onerror = () => reject(req.error);
+    } else {
+      store.clear();
+    }
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
 async function trimOldJobs(hubId: string, keep: number): Promise<void> {
   const all = await loadJobs(hubId, keep + 50);
   if (all.length <= keep) return;

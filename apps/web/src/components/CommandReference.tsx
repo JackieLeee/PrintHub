@@ -11,7 +11,10 @@ import {
 
 interface Props {
   protocol: "tspl" | "escpos";
+  open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /** Footer / workbench mode — no nested details toggle. */
+  embedded?: boolean;
 }
 
 function CommandTable({ rows, protocol }: { rows: CommandEntry[]; protocol: "tspl" | "escpos" }) {
@@ -66,26 +69,35 @@ function CategoryGroup({
   );
 }
 
-export function CommandReference({ protocol, onOpenChange }: Props) {
+export function CommandReference({ protocol, open, onOpenChange, embedded = false }: Props) {
   const { t } = useLocale();
   const categories = protocol === "tspl" ? TSPL_CATEGORIES : ESCPOS_CATEGORIES;
   const source = protocol === "tspl" ? TSPL_COMMANDS : ESCPOS_COMMANDS;
   const title = protocol === "tspl" ? t.cmdRef.titleTspl : t.cmdRef.titleEscpos;
 
+  const body = (
+    <div className="cmd-ref-body">
+      {categories.map((category) => (
+        <CategoryGroup key={category.titleKey} category={category} source={source} protocol={protocol} />
+      ))}
+    </div>
+  );
+
+  if (embedded) {
+    return <div className="cmd-ref cmd-ref--embedded">{body}</div>;
+  }
+
   return (
     <div className="cmd-ref">
       <details
         className="cmd-ref-root"
+        open={open}
         onToggle={(e) => onOpenChange?.((e.currentTarget as HTMLDetailsElement).open)}
       >
         <summary>
           {title} ({source.length})
         </summary>
-        <div className="cmd-ref-body">
-          {categories.map((category) => (
-            <CategoryGroup key={category.titleKey} category={category} source={source} protocol={protocol} />
-          ))}
-        </div>
+        {body}
       </details>
     </div>
   );

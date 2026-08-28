@@ -1,14 +1,33 @@
-import { useEffect, useMemo, useState } from "react";
-import type { PrinterSimConfig, PrinterSimEvent, PrinterSimScenario } from "@virt-printer/shared";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type {
+  PrinterSimConfig,
+  PrinterSimEvent,
+  PrinterSimEventKind,
+  PrinterSimLiveState,
+  PrinterSimScenario,
+  TcpQueueEntry,
+  TcpQueueState,
+} from "@virt-printer/shared";
+import {
+  MAX_PRINT_DELAY_MS,
+  MAX_STATUS_DELAY_MS,
+  computeSimLiveState,
+} from "@virt-printer/shared";
 import { useLocale } from "../i18n/context";
+import { formatDuration } from "../lib/format-duration";
 import { sortSimEvents } from "../lib/local-sim";
 import { kickCashDrawer, updateSimConfig } from "../lib/printer-sim-api";
+
 interface Props {
   httpBase: string;
   config: PrinterSimConfig | null;
   events: PrinterSimEvent[];
+  liveState: PrinterSimLiveState | null;
+  tcpQueue: TcpQueueEntry[];
   connected: boolean;
+  compact?: boolean;
   onConfigChange: (config: PrinterSimConfig) => void;
+  onEventsClear?: () => void;
 }
 
 const SCENARIOS: PrinterSimScenario[] = [
@@ -20,6 +39,7 @@ const SCENARIOS: PrinterSimScenario[] = [
   "reject-job",
 ];
 
+type EventTab = "all" | "polls" | "jobs" | "drawer";
 type SignalColor = "green" | "yellow" | "red";
 
 function scenarioSignal(scenario: PrinterSimScenario, statusDelayMs = 0): SignalColor {
@@ -36,6 +56,10 @@ function formatEventTime(at: number): string {
   });
 }
 
+function formatPollByte(byte: number): string {
+  return `0x${byte.toString(16).padStart(2, "0").toUpperCase()}`;
+}
+
 /** Legacy sim events used placeholder labels instead of client IPs. */
 function formatEventSource(sourceIp: string | undefined): string | null {
   if (!sourceIp) return null;
@@ -43,56 +67,117 @@ function formatEventSource(sourceIp: string | undefined): string | null {
   return sourceIp;
 }
 
+function matchesEventTab(kind: PrinterSimEventKind, tab: EventTab): boolean {
+  if (tab === "all") return true;
+  if (tab === "polls") return kind === "status-poll";
+  if (tab === "jobs") return kind === "job-rejected" || kind === "job-completed";
+  return kind === "cash-drawer" || kind === "manual-drawer";
+}
+
+function queueStateLabel(
+  state: TcpQueueState,
+  t: ReturnType<typeof useLocale>["t"],
+): string {
+  if (state === "receiving") return t.sim.queueReceiving;
+  if (state === "queued") return t.sim.queueQueued;
+  return t.sim.queueProcessing;
+}
+
 export function PrinterSimPanel({
   httpBase,
   config,
   events,
+  liveState: liveStateProp,
+  tcpQueue,
   connected,
+  compact = false,
   onConfigChange,
+  onEventsClear,
 }: Props) {
   const { t, format } = useLocale();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [delayMs, setDelayMs] = useState(config?.statusDelayMs ?? 0);
+  const [statusDelayMs, setStatusDelayMs] = useState(config?.statusDelayMs ?? 0);
+  const [printDelayMs, setPrintDelayMs] = useState(config?.printDelayMs ?? 0);
+  const [eventTab, setEventTab] = useState<EventTab>("all");
+  const lastDrawerEventIdRef = useRef<string | null>(null);
+  const drawerEventsInitializedRef = useRef(false);
 
   useEffect(() => {
-    setDelayMs(config?.statusDelayMs ?? 0);
+    setStatusDelayMs(config?.statusDelayMs ?? 0);
   }, [config?.statusDelayMs]);
 
   useEffect(() => {
-    const latest = events.find(
+    setPrintDelayMs(config?.printDelayMs ?? 0);
+  }, [config?.printDelayMs]);
+
+  useEffect(() => {
+    const drawerEvents = events.filter(
       (e) => e.kind === "cash-drawer" || e.kind === "manual-drawer",
     );
-    if (latest) setDrawerOpen(true);
+    if (drawerEvents.length === 0) {
+      lastDrawerEventIdRef.current = null;
+      drawerEventsInitializedRef.current = false;
+      return;
+    }
+
+    const latest = drawerEvents.reduce((a, b) => (a.at >= b.at ? a : b));
+
+    if (!drawerEventsInitializedRef.current) {
+      drawerEventsInitializedRef.current = true;
+      lastDrawerEventIdRef.current = latest.id;
+      return;
+    }
+
+    if (latest.id !== lastDrawerEventIdRef.current) {
+      lastDrawerEventIdRef.current = latest.id;
+      setDrawerOpen(true);
+    }
   }, [events]);
 
   const scenario = config?.scenario ?? "normal";
-  const statusDelayMs = config?.statusDelayMs ?? 0;
+  const configStatusDelayMs = config?.statusDelayMs ?? 0;
+
+  const liveState = useMemo(() => {
+    if (liveStateProp) return liveStateProp;
+    if (config) return computeSimLiveState(config.scenario, tcpQueue.length);
+    return null;
+  }, [liveStateProp, config, tcpQueue.length]);
+
   const sortedEvents = useMemo(() => sortSimEvents(events), [events]);
+  const filteredEvents = useMemo(
+    () => sortedEvents.filter((ev) => matchesEventTab(ev.kind, eventTab)),
+    [sortedEvents, eventTab],
+  );
+
+  async function patchConfig(partial: Partial<PrinterSimConfig>) {
+    if (!connected) return;
+    setError(null);
+    try {
+      const updated = await updateSimConfig(httpBase, partial);
+      onConfigChange(updated);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
 
   async function setScenario(next: PrinterSimScenario) {
     if (!connected || busy) return;
     setBusy(true);
     setError(null);
     try {
-      const updated = await updateSimConfig(httpBase, { scenario: next });
+      const partial: Partial<PrinterSimConfig> = { scenario: next };
+      if (scenario === "slow" && next !== "slow") {
+        partial.statusDelayMs = 0;
+        setStatusDelayMs(0);
+      }
+      const updated = await updateSimConfig(httpBase, partial);
       onConfigChange(updated);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setBusy(false);
-    }
-  }
-
-  async function commitDelay(ms: number) {
-    if (!connected) return;
-    setError(null);
-    try {
-      const updated = await updateSimConfig(httpBase, { statusDelayMs: ms });
-      onConfigChange(updated);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
     }
   }
 
@@ -114,11 +199,29 @@ export function PrinterSimPanel({
     setDrawerOpen(false);
   }
 
+  function handleDrawerSwitch(next: boolean) {
+    if (next) void handleOpenDrawer();
+    else handleCloseDrawer();
+  }
+
+  async function handleClearEvents() {
+    if (busy || sortedEvents.length === 0) return;
+    setBusy(true);
+    setError(null);
+    try {
+      onEventsClear?.();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const panelClass = compact ? "printer-sim-panel printer-sim-panel--compact" : "printer-sim-panel";
+
   return (
-    <div className="printer-sim-panel">
+    <div className={panelClass}>
       <div className="printer-sim-header">
         <h3>{t.sim.title}</h3>
-        <span className="printer-sim-hint">{t.sim.hint}</span>
+        {!compact && <span className="printer-sim-hint">{t.sim.hint}</span>}
         {!connected && <span className="printer-sim-offline">{t.sim.bridgeRequired}</span>}
       </div>
 
@@ -129,7 +232,7 @@ export function PrinterSimPanel({
             const active = scenario === s;
             const signal =
               s === "slow"
-                ? scenarioSignal("slow", active ? delayMs : statusDelayMs)
+                ? scenarioSignal("slow", active ? statusDelayMs : configStatusDelayMs)
                 : scenarioSignal(s);
             return (
               <button
@@ -150,26 +253,92 @@ export function PrinterSimPanel({
         </div>
       </div>
 
-      {(scenario === "slow" || statusDelayMs > 0) && (
+      {(scenario === "slow" || configStatusDelayMs > 0) && (
         <div className="printer-sim-field">
-          <label htmlFor="sim-delay">{t.sim.statusDelay}</label>
+          <label htmlFor="sim-status-delay">{t.sim.statusDelay}</label>
           <input
-            id="sim-delay"
+            id="sim-status-delay"
             type="range"
             min={0}
-            max={3000}
+            max={MAX_STATUS_DELAY_MS}
             step={100}
-            value={delayMs}
+            value={statusDelayMs}
             disabled={!connected}
-            onChange={(e) => setDelayMs(Number(e.target.value))}
-            onPointerUp={(e) => void commitDelay(Number(e.currentTarget.value))}
+            onChange={(e) => setStatusDelayMs(Number(e.target.value))}
+            onPointerUp={(e) => void patchConfig({ statusDelayMs: Number(e.currentTarget.value) })}
             onKeyUp={(e) => {
               if (e.key === "Enter" || e.key === " ") {
-                void commitDelay(Number(e.currentTarget.value));
+                void patchConfig({ statusDelayMs: Number(e.currentTarget.value) });
               }
             }}
           />
-          <span className="printer-sim-delay-value">{delayMs} ms</span>
+          <span className="printer-sim-delay-value">{formatDuration(statusDelayMs)}</span>
+        </div>
+      )}
+
+      <div className="printer-sim-field">
+        <label htmlFor="sim-print-delay">{t.sim.printDelay}</label>
+        <input
+          id="sim-print-delay"
+          type="range"
+          min={0}
+          max={MAX_PRINT_DELAY_MS}
+          step={100}
+          value={printDelayMs}
+          disabled={!connected}
+          onChange={(e) => setPrintDelayMs(Number(e.target.value))}
+          onPointerUp={(e) => void patchConfig({ printDelayMs: Number(e.currentTarget.value) })}
+          onKeyUp={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              void patchConfig({ printDelayMs: Number(e.currentTarget.value) });
+            }
+          }}
+        />
+        <span className="printer-sim-delay-value">{formatDuration(printDelayMs)}</span>
+      </div>
+
+      {liveState && (
+        <div className="sim-live-state">
+          <div className="sim-live-state-title">{t.sim.liveState}</div>
+          <div className="sim-live-state-grid">
+            <div className={`sim-live-cell ${liveState.online ? "ok" : "fault"}`}>
+              <span className="sim-live-label">{t.sim.liveOnline}</span>
+              <span className="sim-live-value">
+                {liveState.online ? t.sim.stateOnline : t.sim.stateOffline}
+              </span>
+            </div>
+            <div className={`sim-live-cell ${liveState.paperOut ? "fault" : "ok"}`}>
+              <span className="sim-live-label">{t.sim.livePaper}</span>
+              <span className="sim-live-value">
+                {liveState.paperOut ? t.sim.stateFault : t.sim.stateOk}
+              </span>
+            </div>
+            <div className={`sim-live-cell ${liveState.coverOpen ? "fault" : "ok"}`}>
+              <span className="sim-live-label">{t.sim.liveCover}</span>
+              <span className="sim-live-value">
+                {liveState.coverOpen ? t.sim.stateFault : t.sim.stateOk}
+              </span>
+            </div>
+            <div className={`sim-live-cell ${liveState.queueDepth > 0 ? "warn" : "ok"}`}>
+              <span className="sim-live-label">{t.sim.liveQueue}</span>
+              <span className="sim-live-value">{liveState.queueDepth}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {connected && tcpQueue.length > 0 && (
+        <div className="sim-tcp-queue">
+          <div className="sim-tcp-queue-title">{t.sim.tcpQueue}</div>
+          <ul className="sim-tcp-queue-list">
+            {tcpQueue.map((entry) => (
+              <li key={entry.sessionId} className={`sim-queue-item sim-queue-item--${entry.state}`}>
+                <span className="sim-queue-state">{queueStateLabel(entry.state, t)}</span>
+                <span className="sim-queue-ip">{entry.sourceIp}</span>
+                <span className="sim-queue-bytes">{entry.bufferedBytes} B</span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
@@ -198,51 +367,85 @@ export function PrinterSimPanel({
           </div>
         </div>
         <div className="cash-drawer-meta">
-          <div
-            className={`cash-drawer-label sim-status-badge sim-status-badge--${drawerOpen ? "green" : "red"}`}
+          <span className="cash-drawer-label">{t.sim.drawerSection}</span>
+          <label className="drawer-switch" title={drawerOpen ? t.sim.drawerOpen : t.sim.drawerClosed}>
+            <input
+              type="checkbox"
+              checked={drawerOpen}
+              disabled={busy}
+              onChange={(e) => handleDrawerSwitch(e.target.checked)}
+            />
+            <span className="drawer-switch-track" aria-hidden="true" />
+          </label>
+          <span
+            className={`sim-status-badge sim-status-badge--${drawerOpen ? "green" : "red"}`}
           >
             <span className="status-led" aria-hidden="true" />
-            <span>{drawerOpen ? t.sim.drawerOpen : t.sim.drawerClosed}</span>
-          </div>
-          <div className="cash-drawer-actions">
-            <button
-              type="button"
-              className="btn-sm"
-              disabled={busy || drawerOpen}
-              onClick={() => void handleOpenDrawer()}
-            >
-              {t.sim.openDrawer}
-            </button>
-            <button
-              type="button"
-              className="btn-sm"
-              disabled={!drawerOpen}
-              onClick={handleCloseDrawer}
-            >
-              {t.sim.closeDrawer}
-            </button>
-          </div>
+            {drawerOpen ? t.sim.drawerOpen : t.sim.drawerClosed}
+          </span>
         </div>
       </div>
 
-      <div className="sim-events">
+      <div className="sim-events sim-events--primary">
         <div className="sim-events-head">
           <div className="sim-events-title">{t.sim.events}</div>
-          <span className="sim-events-count">{format(t.history.totalCount, { n: sortedEvents.length })}</span>
+          <div className="sim-events-head-actions">
+            <span className="sim-events-count">
+              {format(t.history.totalCount, { n: filteredEvents.length })}
+            </span>
+            <button
+              type="button"
+              className="btn-sm btn-ghost"
+              disabled={busy || sortedEvents.length === 0}
+              onClick={() => void handleClearEvents()}
+            >
+              {t.sim.clearEvents}
+            </button>
+          </div>
         </div>
-        {sortedEvents.length === 0 ? (
+        <div className="sim-event-tabs" role="tablist" aria-label={t.sim.events}>
+          {(
+            [
+              ["all", t.sim.eventTabAll],
+              ["polls", t.sim.eventTabPolls],
+              ["jobs", t.sim.eventTabJobs],
+              ["drawer", t.sim.eventTabDrawer],
+            ] as const
+          ).map(([tab, label]) => (
+            <button
+              key={tab}
+              type="button"
+              role="tab"
+              aria-selected={eventTab === tab}
+              className={`sim-event-tab ${eventTab === tab ? "active" : ""}`}
+              onClick={() => setEventTab(tab)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        {filteredEvents.length === 0 ? (
           <div className="sim-events-empty">{t.sim.eventsEmpty}</div>
         ) : (
           <ul className="sim-events-list">
-            {sortedEvents.map((ev) => {
+            {filteredEvents.map((ev) => {
               const eventSource = formatEventSource(ev.sourceIp);
               return (
-              <li key={ev.id} className={`sim-event sim-event--${ev.kind}`}>
-                <span className="sim-event-time">{formatEventTime(ev.at)}</span>
-                <span className="sim-event-kind">{t.sim.eventKinds[ev.kind]}</span>
-                <span className="sim-event-detail">{ev.detail}</span>
-                {eventSource && <span className="sim-event-ip">{eventSource}</span>}
-              </li>
+                <li key={ev.id} className={`sim-event sim-event--${ev.kind}`}>
+                  <span className="sim-event-time">{formatEventTime(ev.at)}</span>
+                  <span className="sim-event-kind">{t.sim.eventKinds[ev.kind]}</span>
+                  <span className="sim-event-detail">{ev.detail}</span>
+                  {ev.pollByte != null && (
+                    <span className="sim-event-poll-byte" title={t.sim.pollByte}>
+                      {formatPollByte(ev.pollByte)}
+                      {ev.pollN != null && <span className="sim-event-poll-n">n={ev.pollN}</span>}
+                    </span>
+                  )}
+                  {ev.durationMs != null && (
+                    <span className="sim-event-duration">{formatDuration(ev.durationMs)}</span>
+                  )}
+                  {eventSource && <span className="sim-event-ip">{eventSource}</span>}
+                </li>
               );
             })}
           </ul>
