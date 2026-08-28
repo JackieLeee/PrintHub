@@ -77,21 +77,22 @@ jobs:
           path: release-assets
           merge-multiple: true
 
-      - name: Resolve release notes
-        id: notes
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          NOTES=".github/release-notes/${GITHUB_REF_NAME}.md"
-          if [ -f "$NOTES" ]; then
-            echo "path=$NOTES" >> "$GITHUB_OUTPUT"
+          TAG="${{ github.ref_name }}"
+          NOTES=".github/release-notes/${TAG}.md"
+          if [ ! -f "$NOTES" ]; then NOTES=".github/release-notes/TEMPLATE.md"; fi
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" --title "$TAG" --notes-file "$NOTES"
           else
-            echo "path=.github/release-notes/TEMPLATE.md" >> "$GITHUB_OUTPUT"
+            gh release create "$TAG" --title "$TAG" --notes-file "$NOTES"
           fi
 
-      - name: Publish GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          files: release-assets/**
-          replace_assets: true
-          body_path: ${{ steps.notes.outputs.path }}
-          generate_release_notes: false
+          shopt -s globstar nullglob
+          assets=(release-assets/**)
+          if [ ${#assets[@]} -gt 0 ]; then
+            gh release upload "$TAG" "${assets[@]}" --clobber
+          fi
