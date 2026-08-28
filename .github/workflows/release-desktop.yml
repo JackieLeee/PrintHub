@@ -48,7 +48,7 @@ jobs:
           pnpm --filter @virt-printer/bridge build
 
       - name: Build macOS universal DMG
-        run: pnpm --filter @virt-printer/desktop dist
+        run: pnpm --filter @virt-printer/desktop dist:ci
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
 
