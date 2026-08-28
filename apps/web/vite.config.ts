@@ -10,22 +10,24 @@ const rootPkg = JSON.parse(readFileSync(join(here, "../../package.json"), "utf8"
 };
 
 const repoName = process.env.VITE_REPO_NAME ?? "PrintHub";
-const isDesktop = process.env.VITE_DESKTOP === "1";
-const base = isDesktop ? "./" : process.env.GITHUB_ACTIONS ? `/${repoName}/` : "/";
+export default defineConfig(({ mode }) => {
+  const isDesktop = mode === "desktop";
+  const base = isDesktop ? "./" : process.env.GITHUB_ACTIONS ? `/${repoName}/` : "/";
 
-export default defineConfig({
-  base,
-  plugins: [react()],
-  define: {
-    "import.meta.env.VITE_APP_VERSION": JSON.stringify(rootPkg.version ?? "1.0.0"),
-  },
-  server: {
-    host: true,
-    port: 5173,
-    proxy: {
-      "/status": "http://localhost:8081",
-      "/health": "http://localhost:8081",
-      "/print": "http://localhost:8081",
+  return {
+    base,
+    plugins: [react()],
+    define: {
+      "import.meta.env.VITE_APP_VERSION": JSON.stringify(rootPkg.version ?? "1.0.0"),
     },
-  },
+    server: {
+      host: true,
+      port: 5173,
+      proxy: {
+        "/status": "http://localhost:8081",
+        "/health": "http://localhost:8081",
+        "/print": "http://localhost:8081",
+      },
+    },
+  };
 });

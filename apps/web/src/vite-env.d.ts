@@ -18,6 +18,13 @@ interface DesktopSettingsView {
 
 interface PrintHubDesktopApi {
   isDesktop: true;
+  platform: NodeJS.Platform;
+  windowChrome: "native" | "traffic-lights";
+  titleBarOverlay: boolean;
+  titleBarOverlayHeight: number;
+  windowMinimize: () => Promise<void>;
+  windowToggleMaximize: () => Promise<boolean>;
+  windowClose: () => Promise<void>;
   getSettings: () => Promise<DesktopSettingsView>;
   getBridgeStatus: () => Promise<HubStatus | null>;
   connect: () => Promise<boolean>;

@@ -49,6 +49,7 @@ export function ThemeSwitcher({ compact = false }: { compact?: boolean }) {
         <HeaderMenuSelect
           value={themeId}
           ariaLabel={t.theme.label}
+          align="end"
           options={UI_THEMES.map((theme) => ({
             value: theme.id,
             label: t.theme.names[theme.id],

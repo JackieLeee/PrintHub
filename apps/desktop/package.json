@@ -6,15 +6,18 @@
   "main": "dist/main.js",
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.json && tsc -p tsconfig.preload.json && mv -f dist/preload.js dist/preload.cjs",
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.preload.json && node scripts/rename-preload.mjs",
+    "install:electron": "node scripts/ensure-electron.mjs",
+    "postinstall": "node scripts/ensure-electron.mjs --soft",
     "icons": "node scripts/generate-app-icon.mjs",
     "dev": "pnpm build && node scripts/run-dev.mjs",
-    "dev:raw": "pnpm build && electron .",
+    "dev:raw": "pnpm build && node scripts/run-electron.mjs",
     "start": "pnpm build && node scripts/run-dev.mjs",
     "pack": "pnpm icons && pnpm build && electron-builder --dir",
     "dist": "pnpm icons && pnpm build && pnpm exec electron-builder --mac dmg --arm64 --universal",
     "dist:mac": "pnpm icons && pnpm build && pnpm exec electron-builder --mac dmg --arm64 --universal",
-    "dist:ci": "pnpm build && pnpm exec electron-builder --mac dmg --arm64 --universal"
+    "dist:ci": "pnpm build && pnpm exec electron-builder --mac dmg --arm64 --universal",
+    "dist:win": "pnpm icons && pnpm build && pnpm exec electron-builder --win nsis"
   },
   "dependencies": {
     "@virt-printer/bridge": "workspace:*",

@@ -30,6 +30,12 @@ export const en: Translations = {
     subtitleOffline: "ESC/POS & TSPL · Waiting for Bridge…",
     loadingHistory: "Loading history…",
   },
+  desktopChrome: {
+    windowControls: "Window controls",
+    close: "Close",
+    minimize: "Minimize",
+    maximize: "Maximize",
+  },
   sections: {
     network: "Network & ports",
     history: "Print history",

@@ -1,14 +1,24 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type { BridgeMessage, PrinterSimConfig, PrinterSimEvent } from "@virt-printer/shared";
 
-export interface DesktopSettingsView {
+interface DesktopSettingsView {
   lanHttpEnabled: boolean;
   httpPort: number;
   tcpPort: number;
 }
 
+const customChrome = process.platform !== "darwin";
+
 contextBridge.exposeInMainWorld("printhubDesktop", {
   isDesktop: true as const,
+  platform: process.platform,
+  windowChrome: customChrome ? ("traffic-lights" as const) : ("native" as const),
+  titleBarOverlay: false,
+  titleBarOverlayHeight: customChrome ? 40 : 0,
+  windowMinimize: () => ipcRenderer.invoke("desktop:window-minimize"),
+  windowToggleMaximize: () =>
+    ipcRenderer.invoke("desktop:window-toggle-maximize") as Promise<boolean>,
+  windowClose: () => ipcRenderer.invoke("desktop:window-close"),
   getSettings: () => ipcRenderer.invoke("desktop:get-settings") as Promise<DesktopSettingsView>,
   getBridgeStatus: () => ipcRenderer.invoke("desktop:get-bridge-status"),
   connect: () => ipcRenderer.invoke("desktop:connect") as Promise<boolean>,

@@ -11,6 +11,7 @@
     "build:web:desktop": "pnpm --filter @virt-printer/shared build && pnpm --filter @virt-printer/tspl build && pnpm --filter @virt-printer/web build:desktop",
     "build:desktop": "pnpm build:web:desktop && pnpm --filter @virt-printer/shared build && pnpm --filter @virt-printer/tspl build && pnpm --filter @virt-printer/bridge build && pnpm --filter @virt-printer/desktop build",
     "dist:desktop": "pnpm build:web:desktop && pnpm --filter @virt-printer/bridge build && pnpm --filter @virt-printer/desktop dist",
+    "dist:desktop:win": "pnpm build:web:desktop && pnpm --filter @virt-printer/shared build && pnpm --filter @virt-printer/tspl build && pnpm --filter @virt-printer/bridge build && pnpm --filter @virt-printer/desktop dist:win",
     "start": "pnpm build:web && pnpm --filter @virt-printer/bridge start",
     "build": "turbo build",
     "lint": "turbo lint"
@@ -19,5 +20,12 @@
     "turbo": "^2.5.4",
     "typescript": "^5.8.3"
   },
-  "packageManager": "pnpm@9.15.9"
+  "packageManager": "pnpm@9.15.9",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "electron",
+      "esbuild",
+      "sharp"
+    ]
+  }
 }

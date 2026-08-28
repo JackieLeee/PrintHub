@@ -34,28 +34,35 @@ Cash registers, POS apps, and label printers usually send **raw ESC/POS or TSPL*
 | **9100** | TCP — print data (always on) |
 | **8081** | HTTP + WebSocket + Web UI (optional in desktop; always on in CLI) |
 
-### Desktop app (macOS)
+### Desktop app (macOS & Windows)
 
 Bridge runs inside the Electron app. TCP **9100** is always available; LAN HTTP is **off by default** and can be enabled from the tray.
 
 Download from [Releases](https://github.com/JackieLeee/PrintHub/releases):
 
-| DMG | Platform | Size |
-|-----|----------|------|
-| `*-arm64.dmg` | Apple Silicon (M 系列) | ~110 MB |
-| `*-universal.dmg` | Apple Silicon + Intel | ~200 MB |
+| Platform | Artifact |
+|----------|----------|
+| **macOS** | `*-arm64.dmg` (~110 MB, Apple Silicon) · `*-universal.dmg` (~200 MB, Apple Silicon + Intel) |
+| **Windows** | `*.exe` NSIS installer (x64) |
 
 ```bash
 pnpm install
-pnpm dev:desktop    # build & launch PrintHub.app
-pnpm dist:desktop   # build both arm64 and universal .dmg
+pnpm dev:desktop       # build & launch (macOS / Windows / Linux)
+pnpm dist:desktop      # macOS arm64 + universal .dmg (run on macOS)
+pnpm dist:desktop:win  # Windows NSIS .exe (run on Windows)
 ```
 
-> **Not code-signed.** Release builds are **unsigned** (no Apple Developer ID). macOS Gatekeeper may block the first launch. **Right-click PrintHub → Open**, or allow it under **System Settings → Privacy & Security**. This is expected for open-source builds without a paid signing certificate.
+**Windows shell:** frameless window with **macOS-style traffic lights** (red / yellow / green) on the left, integrated title bar, overlay scrollbars, and a light tray icon on the dark taskbar.
+
+**macOS shell:** native menu-bar tray icon and system window chrome.
+
+> **Windows / first install:** `pnpm install` tries to download Electron (~100MB); if GitHub is blocked it auto-retries via npmmirror. If it still fails, run `pnpm --filter @virt-printer/desktop run install:electron`, or set `ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/` and retry.
+
+> **Not code-signed.** Release builds are **unsigned** (no Apple Developer ID / Windows Authenticode). macOS may block the first launch — **right-click PrintHub → Open**, or allow under **System Settings → Privacy & Security**. Windows SmartScreen may warn on first run — click **More info → Run anyway**.
 
 Tray menu: status (Bridge / TCP / mDNS / LAN), copy LAN URL, HTTP port, **Language** (EN / 中文), restart Bridge, quit. Theme and language sync between the Web UI and tray (`settings.json` + localStorage).
 
-On **macOS**, tray rows use label prefixes — **🟢 / 🟡 / 🔴** for status, **🌐** for Language — because Electron tray menus ignore custom icons. Windows/Linux use SVG menu icons.
+On **macOS** and **Windows**, tray rows use label prefixes — **🟢 / 🟡 / 🔴** for status, **▣ / ⛓ / 🌐** etc. for actions — because Electron tray menus do not reliably render custom icons. **Linux** uses SVG menu icons.
 
 | Workbench | Preview & history | Debug print |
 |:---:|:---:|:---:|

@@ -21,6 +21,12 @@ export interface Translations {
     subtitleOffline: string;
     loadingHistory: string;
   };
+  desktopChrome: {
+    windowControls: string;
+    close: string;
+    minimize: string;
+    maximize: string;
+  };
   sections: {
     network: string;
     history: string;

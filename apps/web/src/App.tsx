@@ -4,6 +4,8 @@ import { DEFAULT_TCP_PORT, hubIdFromStatus } from "@virt-printer/shared";
 import { RelayClient } from "@virt-printer/relay-client";
 import { DesktopRelayClient } from "./lib/desktop-relay-client";
 import { isDesktopApp, isDesktopShell } from "./lib/is-desktop";
+import { applyDesktopChrome } from "./lib/desktop-chrome";
+import { DesktopTrafficLights } from "./components/DesktopTrafficLights";
 import { isMeaningfulPrintJob } from "@virt-printer/escpos";
 import { parseTspl, formatLabelSize, isTsplPayload } from "@virt-printer/tspl";
 import { renderEscPosPreview, renderTsplToCanvas } from "@virt-printer/renderer";
@@ -321,6 +323,10 @@ export function App() {
   const hostIp = status?.hostIp;
 
   useEffect(() => {
+    applyDesktopChrome();
+  }, [ipcReady]);
+
+  useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") {
         setWorkbenchOpen(false);
@@ -331,20 +337,24 @@ export function App() {
   }, []);
 
   return (
-    <div className="app app--preview-first">
+    <div className={`app app--preview-first${desktopShell ? " app--desktop-shell" : ""}`}>
       <ToastHost />
       <header className="header">
-        <div>
+        <DesktopTrafficLights />
+        <div className="header-brand">
           <h1>{t.app.title}</h1>
-          <p className="subtitle">
-            {hostIp
-              ? format(t.app.subtitle, { host: hostIp, tcp: tcpPort })
-              : t.app.subtitleOffline}
-          </p>
+          {!desktopShell && (
+            <p className="subtitle">
+              {hostIp
+                ? format(t.app.subtitle, { host: hostIp, tcp: tcpPort })
+                : t.app.subtitleOffline}
+            </p>
+          )}
         </div>
         <AppHeaderActions
-          historyLoading={!historyReady}
+          historyLoading={!historyReady && !desktopShell}
           loadingLabel={t.app.loadingHistory}
+          compact={desktopShell}
         />
       </header>
 

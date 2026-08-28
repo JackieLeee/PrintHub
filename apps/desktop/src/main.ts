@@ -6,6 +6,7 @@ import {
   ipcMain,
   Menu,
   nativeImage,
+  nativeTheme,
   shell,
   Tray,
   type MenuItemConstructorOptions,
@@ -13,7 +14,7 @@ import {
 } from "electron";
 import { VirtPrinterBridge } from "@virt-printer/bridge";
 import { DEFAULT_HTTP_PORT, DEFAULT_TCP_PORT, MDNS_PRINTER_SERVICE_TYPE } from "@virt-printer/shared";
-import { resolveTrayIconPath } from "./tray-icon.js";
+import { loadTrayIconImage, resolveTrayIconPath } from "./tray-icon.js";
 import { attachBridgeSubscription, registerBridgeIpc } from "./bridge-ipc.js";
 import { existsSync } from "node:fs";
 import {
@@ -38,12 +39,17 @@ import {
   type DesktopLocale,
 } from "./i18n/index.js";
 import { buildPortPromptHtml } from "./port-prompt-html.js";
-import { menuIcons } from "./menu-icons.js";
+import { menuIcons, clearMenuIconCache } from "./menu-icons.js";
 import {
   actionMenuLabel,
   statusMenuLabel,
   trayMenuIcon,
 } from "./menu-tray-display.js";
+import {
+  applyCustomWindowChrome,
+  buildMainWindowOptions,
+} from "./window-options.js";
+import { registerWindowIpc } from "./window-ipc.js";
 
 let bridge: VirtPrinterBridge | null = null;
 let unsubscribeBridge: (() => void) | null = null;
@@ -162,21 +168,8 @@ function createMainWindow(): void {
     console.log("[desktop] preload", preloadPath);
   }
 
-  mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 860,
-    minWidth: 960,
-    minHeight: 640,
-    title: "PrintHub",
-    show: false,
-    ...(iconPath ? { icon: iconPath } : {}),
-    webPreferences: {
-      preload: preloadPath,
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: false,
-    },
-  });
+  mainWindow = new BrowserWindow(buildMainWindowOptions(preloadPath, iconPath ?? undefined));
+  applyCustomWindowChrome(mainWindow);
 
   mainWindow.webContents.on("preload-error", (_event, path, err) => {
     console.error("[desktop] preload-error", path, err);
@@ -677,8 +670,18 @@ function createTray(): void {
       return;
     }
 
-    // Pass file path only — do not call setImage()/resize(); both break macOS tray rendering.
-    tray = new Tray(iconPath);
+    // macOS: pass file path only — setImage()/resize() break menu bar rendering.
+    // Windows/Linux: recolor template PNG to light for dark taskbar.
+    if (process.platform === "darwin") {
+      tray = new Tray(iconPath);
+    } else {
+      const lightIcon = loadTrayIconImage(settings.trayIconVariant ?? "a");
+      if (!lightIcon || lightIcon.isEmpty()) {
+        console.warn("[desktop] tray icon recolor failed, skipping tray");
+        return;
+      }
+      tray = new Tray(lightIcon);
+    }
     tray.setToolTip("PrintHub");
     updateTrayMenu();
     tray.on("double-click", () => showMainWindow());
@@ -708,6 +711,7 @@ function registerDesktopIpc(): void {
     getBridge: () => bridge,
     getSubscribers: () => ipcSubscribers,
   });
+  registerWindowIpc(() => mainWindow);
 
   ipcMain.handle("desktop:get-settings", () => desktopSettingsView());
   ipcMain.handle("desktop:get-lan-url", () => lanUrl());
@@ -809,6 +813,11 @@ async function bootstrap(): Promise<void> {
 
   createTray();
   createMainWindow();
+
+  nativeTheme.on("updated", () => {
+    clearMenuIconCache();
+    updateTrayMenu();
+  });
 }
 
 const gotLock = app.requestSingleInstanceLock();

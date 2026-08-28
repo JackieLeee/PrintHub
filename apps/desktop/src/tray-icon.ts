@@ -1,4 +1,4 @@
-import { app } from "electron";
+import { app, nativeImage, type NativeImage } from "electron";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -35,6 +35,29 @@ function resolveAsset(name: string): string | null {
 export function resolveTrayIconPath(variant: TrayIconVariant = "a"): string | null {
   const file = `tray-${variant}Template.png`;
   return resolveAsset(file) ?? resolveAsset("tray-aTemplate.png");
+}
+
+/** Light tray icon for Windows/Linux taskbar (template PNGs are black-on-transparent). */
+export function loadTrayIconImage(variant: TrayIconVariant = "a"): NativeImage | null {
+  const iconPath = resolveTrayIconPath(variant);
+  if (!iconPath) return null;
+
+  const source = nativeImage.createFromPath(iconPath);
+  if (source.isEmpty()) return null;
+
+  if (process.platform === "darwin") return source;
+
+  const { width, height } = source.getSize();
+  const bitmap = source.toBitmap();
+  const light = Buffer.alloc(bitmap.length);
+  for (let i = 0; i < bitmap.length; i += 4) {
+    const alpha = bitmap[i + 3];
+    light[i] = 232;
+    light[i + 1] = 234;
+    light[i + 2] = 239;
+    light[i + 3] = alpha;
+  }
+  return nativeImage.createFromBuffer(light, { width, height });
 }
 
 export const TRAY_ICON_VARIANTS: TrayIconVariant[] = ["a", "b", "c", "d"];

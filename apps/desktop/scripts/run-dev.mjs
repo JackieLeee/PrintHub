@@ -3,11 +3,19 @@
  * Raw `electron .` never appears in System Settings → Menu Bar.
  */
 import { execFileSync, spawnSync } from "node:child_process";
+import { createRequire } from "node:module";
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { ensureElectron } from "./ensure-electron.mjs";
 
 const desktopRoot = join(fileURLToPath(new URL(".", import.meta.url)), "..");
+const require = createRequire(import.meta.url);
+
+function spawnPnpm(args) {
+  const cmd = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
+  return execFileSync(cmd, args, { cwd: desktopRoot, stdio: "inherit" });
+}
 
 function findPrintHubApp(dir) {
   if (!existsSync(dir)) return null;
@@ -24,11 +32,8 @@ function findPrintHubApp(dir) {
 
 function runDarwinPackaged() {
   console.log("[desktop] macOS: building PrintHub.app (required for menu bar on macOS 26+)…");
-  execFileSync("pnpm", ["icons"], { cwd: desktopRoot, stdio: "inherit" });
-  execFileSync("pnpm", ["exec", "electron-builder", "--dir"], {
-    cwd: desktopRoot,
-    stdio: "inherit",
-  });
+  spawnPnpm(["icons"]);
+  spawnPnpm(["exec", "electron-builder", "--dir"]);
 
   const appPath = findPrintHubApp(join(desktopRoot, "release"));
   if (!appPath) {
@@ -41,10 +46,18 @@ function runDarwinPackaged() {
 }
 
 function runDirectElectron() {
-  execFileSync("pnpm", ["exec", "electron", "."], {
+  ensureElectron();
+  const electronPath = require("electron");
+  const result = spawnSync(electronPath, ["."], {
     cwd: desktopRoot,
     stdio: "inherit",
+    env: process.env,
   });
+  if (result.error) {
+    console.error("[desktop] failed to launch Electron:", result.error);
+    process.exit(1);
+  }
+  process.exit(result.status ?? 0);
 }
 
 if (process.platform === "darwin") {

@@ -4,11 +4,11 @@ import { menuIcons } from "./menu-icons.js";
 export type StatusTone = "green" | "yellow" | "red";
 
 /**
- * macOS tray / context menus often ignore MenuItem.icon (SVG + color especially).
- * Use label prefixes on darwin; keep NativeImage icons on Windows/Linux.
+ * macOS / Windows tray menus do not reliably render MenuItem.icon (SVG especially).
+ * Linux shows NativeImage icons; macOS + Windows use label prefixes below.
  */
 export function useTrayMenuIcons(): boolean {
-  return process.platform !== "darwin";
+  return process.platform === "linux";
 }
 
 const TRAFFIC_MARK: Record<StatusTone, string> = {
@@ -17,7 +17,7 @@ const TRAFFIC_MARK: Record<StatusTone, string> = {
   red: "🔴",
 };
 
-/** Action row prefixes — Unicode symbols, not emoji (except Language globe). */
+/** Action row prefixes — same glyphs as macOS menu bar. */
 const ACTION_MARK = {
   openConsole: "▣ ",
   copyLanUrl: "⛓ ",
@@ -43,7 +43,8 @@ export function actionMenuLabel(
 
 export function trayMenuIcon(factory: () => NativeImage): NativeImage | undefined {
   if (!useTrayMenuIcons()) return undefined;
-  return factory();
+  const icon = factory();
+  return icon.isEmpty() ? undefined : icon;
 }
 
 export { menuIcons };

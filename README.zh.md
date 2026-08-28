@@ -34,28 +34,35 @@
 | **9100** | TCP — 打印数据（始终开启） |
 | **8081** | HTTP + WebSocket + Web 控制台（桌面端默认关闭；CLI 始终开启） |
 
-### 桌面应用（macOS）
+### 桌面应用（macOS 与 Windows）
 
 Bridge 内置于 Electron。TCP **9100** 始终可用；局域网 HTTP **默认关闭**，可在托盘中开启。
 
 安装包见 [Releases](https://github.com/JackieLeee/PrintHub/releases)：
 
-| DMG | 适用 | 体积 |
-|-----|------|------|
-| `*-arm64.dmg` | Apple 芯片（M 系列） | ~110 MB |
-| `*-universal.dmg` | Apple 芯片 + Intel | ~200 MB |
+| 平台 | 安装包 |
+|------|--------|
+| **macOS** | `*-arm64.dmg`（~110 MB，Apple 芯片）· `*-universal.dmg`（~200 MB，Apple 芯片 + Intel） |
+| **Windows** | `*.exe` NSIS 安装程序（x64） |
 
 ```bash
 pnpm install
-pnpm dev:desktop    # 构建并启动 PrintHub.app
-pnpm dist:desktop   # 同时打包 arm64 与 universal .dmg
+pnpm dev:desktop       # 构建并启动（macOS / Windows / Linux）
+pnpm dist:desktop      # 打包 macOS arm64 + universal .dmg（需在 macOS 上执行）
+pnpm dist:desktop:win  # 打包 Windows NSIS .exe（需在 Windows 上执行）
 ```
 
-> **未签名说明：** 发布版 **未做 Apple 代码签名**（无 Developer ID）。首次打开时 macOS 可能拦截。请 **右键 PrintHub → 打开**，或在 **系统设置 → 隐私与安全性** 中允许运行。开源项目未购买签名证书时属于正常现象。
+**Windows 外壳：** 无边框窗口 + 左侧 **macOS 风格交通灯**（红 / 黄 / 绿）、一体化顶栏、滚动时显示的 overlay 滚动条、深色任务栏上的浅色托盘图标。
+
+**macOS 外壳：** 系统原生菜单栏托盘与窗口控件。
+
+> **Windows / 首次安装：** `pnpm install` 会尝试下载 Electron（约 100MB）；若 GitHub 不通会自动重试 npmmirror。仍失败时执行 `pnpm --filter @virt-printer/desktop run install:electron`，或设置 `ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/` 后重试。
+
+> **未签名说明：** 发布版 **未做代码签名**（无 Apple Developer ID / Windows Authenticode）。macOS 首次打开可能被拦截 — 请 **右键 PrintHub → 打开**，或在 **系统设置 → 隐私与安全性** 中允许。Windows SmartScreen 可能提示 — 选择 **更多信息 → 仍要运行**。
 
 托盘菜单：状态（Bridge / TCP / mDNS / 局域网）、复制局域网地址、HTTP 端口、**语言**（EN / 中文）、重启 Bridge、退出。主题与语言在 Web 控制台与托盘间双向同步（`settings.json` + localStorage）。
 
-**macOS** 托盘行使用 label 前缀 — 状态 **🟢 / 🟡 / 🔴**，**🌐** 表示语言 — 因 Electron 托盘菜单不渲染自定义图标。Windows/Linux 使用 SVG 菜单图标。
+**macOS** 与 **Windows** 托盘行使用 label 前缀 — 状态 **🟢 / 🟡 / 🔴**，操作 **▣ / ⛓ / 🌐** 等 — 因 Electron 托盘菜单无法可靠渲染自定义图标。**Linux** 使用 SVG 菜单图标。
 
 | 工作台 | 预览与历史 | 调试打印 |
 |:---:|:---:|:---:|

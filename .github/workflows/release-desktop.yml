@@ -14,8 +14,22 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  mac:
-    runs-on: macos-latest
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: mac
+            runner: macos-latest
+            dist: pnpm build:web:desktop && pnpm --filter @virt-printer/bridge build && pnpm --filter @virt-printer/desktop dist:ci
+            artifact: mac-desktop
+            glob: apps/desktop/release/*.dmg
+          - id: win
+            runner: windows-latest
+            dist: pnpm dist:desktop:win
+            artifact: win-desktop
+            glob: apps/desktop/release/*.exe
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v5
 
@@ -28,6 +42,7 @@ jobs:
 
       - name: Verify tag matches desktop version
         if: github.event_name == 'push'
+        shell: bash
         run: |
           TAG="${GITHUB_REF_NAME#v}"
           PKG=$(node -p "require('./apps/desktop/package.json').version")
@@ -38,15 +53,30 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Build macOS arm64 + universal DMG
-        run: pnpm build:web:desktop && pnpm --filter @virt-printer/bridge build && pnpm --filter @virt-printer/desktop dist:ci
+      - name: Build desktop installer
+        run: ${{ matrix.dist }}
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.glob }}
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          files: apps/desktop/release/*.dmg
+          files: release-assets/**
           replace_assets: true
           generate_release_notes: true

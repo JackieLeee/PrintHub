@@ -46,6 +46,7 @@ export function LanguageSwitcher({ compact = false }: { compact?: boolean }) {
         <HeaderMenuSelect
           value={locale}
           ariaLabel={t.lang.label}
+          align="end"
           options={[
             { value: "en", label: LOCALE_LABELS.en },
             { value: "zh", label: LOCALE_LABELS.zh },

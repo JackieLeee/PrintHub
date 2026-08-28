@@ -16,6 +16,9 @@
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
+  --scrollbar-size: 6px;
+  --scrollbar-thumb: rgba(139, 147, 167, 0.55);
+  --scrollbar-thumb-hover: rgba(139, 147, 167, 0.78);
   font-family: "SF Pro Text", "Segoe UI", system-ui, sans-serif;
   background: var(--bg);
   color: var(--text);
@@ -35,6 +38,345 @@
 
 body {
   margin: 0;
+}
+
+/* Overlay scrollbars — Windows/Linux desktop & browser; macOS desktop keeps native bars */
+html.overlay-scrollbars,
+html.overlay-scrollbars * {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+html.overlay-scrollbars.is-scrolling,
+html.overlay-scrollbars *.is-scrolling {
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+html.overlay-scrollbars::-webkit-scrollbar,
+html.overlay-scrollbars *::-webkit-scrollbar {
+  width: var(--scrollbar-size);
+  height: var(--scrollbar-size);
+}
+
+html.overlay-scrollbars::-webkit-scrollbar-track,
+html.overlay-scrollbars *::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+html.overlay-scrollbars::-webkit-scrollbar-thumb,
+html.overlay-scrollbars *::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  border-radius: 999px;
+  min-height: 32px;
+}
+
+html.overlay-scrollbars.is-scrolling::-webkit-scrollbar-thumb,
+html.overlay-scrollbars *.is-scrolling::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb);
+}
+
+html.overlay-scrollbars.is-scrolling::-webkit-scrollbar-thumb:hover,
+html.overlay-scrollbars *.is-scrolling::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover);
+}
+
+/* Windows Electron — single-row title bar integrated with overlay controls */
+html.desktop-win {
+  --desktop-titlebar-height: 40px;
+  --desktop-window-controls-width: 138px;
+}
+
+html.desktop-win body {
+  background: var(--bg);
+}
+
+html.desktop-win .app {
+  padding: 0 20px 16px;
+}
+
+html.desktop-win .app--preview-first .header {
+  margin-bottom: 10px;
+}
+
+html.desktop-win .header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  margin: 0 -20px 0;
+  padding: 0 calc(var(--desktop-window-controls-width) + 12px) 0 16px;
+  min-height: var(--desktop-titlebar-height);
+  flex-wrap: nowrap;
+  -webkit-app-region: drag;
+  user-select: none;
+  background: var(--bg);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
+}
+
+html.desktop-win .header-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+  -webkit-app-region: drag;
+}
+
+html.desktop-win .header-brand::before {
+  content: "";
+  width: 3px;
+  height: 14px;
+  border-radius: 2px;
+  background: var(--accent);
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
+html.desktop-win .header h1 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.03em;
+  flex-shrink: 0;
+}
+
+html.desktop-win .header .subtitle {
+  display: none;
+}
+
+html.desktop-win .header-actions,
+html.desktop-win .header button,
+html.desktop-win .header a,
+html.desktop-win .header select,
+html.desktop-win .header .github-link,
+html.desktop-win .header .lang-select-wrap,
+html.desktop-win .header .header-menu-select,
+html.desktop-win .header .header-toolbar-select-wrap {
+  -webkit-app-region: no-drag;
+}
+
+html.desktop-win .header-actions {
+  flex-shrink: 0;
+  margin-left: auto;
+  gap: 0;
+}
+
+html.desktop-win .header-actions--compact .header-actions-group {
+  padding: 1px;
+  gap: 0;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface2) 88%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+}
+
+html.desktop-win .header-actions--compact .header-actions-divider {
+  height: 14px;
+}
+
+html.desktop-win .header-actions--compact .header-toolbar-control,
+html.desktop-win .header-actions--compact .github-link {
+  min-height: 26px;
+  padding: 4px 8px;
+}
+
+html.desktop-win .workbench.panel {
+  margin-top: 10px;
+}
+
+/* Windows/Linux Electron — frameless + macOS-style traffic lights on the left */
+html.desktop-custom-chrome {
+  --desktop-titlebar-height: 40px;
+  --desktop-traffic-lights-width: 68px;
+}
+
+html.desktop-custom-chrome body {
+  background: var(--bg);
+}
+
+html.desktop-custom-chrome .app {
+  padding: 0 20px 16px;
+}
+
+html.desktop-custom-chrome .app--preview-first .header {
+  margin-bottom: 10px;
+}
+
+html.desktop-custom-chrome .header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0;
+  margin: 0 -20px 0;
+  padding: 0 16px 0 0;
+  min-height: var(--desktop-titlebar-height);
+  flex-wrap: nowrap;
+  overflow: visible;
+  -webkit-app-region: drag;
+  user-select: none;
+  background: var(--bg);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
+}
+
+html.desktop-custom-chrome .desktop-traffic-lights {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  width: calc(var(--desktop-traffic-lights-width) + 16px);
+  padding: 0 0 0 16px;
+  height: var(--desktop-titlebar-height);
+  -webkit-app-region: no-drag;
+}
+
+html.desktop-custom-chrome .traffic-light {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  cursor: default;
+  flex-shrink: 0;
+  opacity: 1;
+  transition: opacity 0.12s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+html.desktop-custom-chrome .desktop-traffic-lights:hover .traffic-light {
+  cursor: pointer;
+}
+
+html.desktop-custom-chrome .traffic-light-glyph {
+  opacity: 0;
+  transform: scale(0.85);
+  transition: opacity 0.12s ease, transform 0.12s ease;
+  pointer-events: none;
+}
+
+html.desktop-custom-chrome .desktop-traffic-lights:hover .traffic-light-glyph {
+  opacity: 1;
+  transform: scale(1);
+}
+
+html.desktop-custom-chrome .traffic-light-glyph--close {
+  font-size: 10px;
+  line-height: 1;
+  font-weight: 700;
+  color: rgba(70, 16, 10, 0.72);
+  transform: translateY(-0.5px);
+}
+
+html.desktop-custom-chrome .traffic-light-glyph--close::before {
+  content: "×";
+}
+
+html.desktop-custom-chrome .traffic-light-glyph--minimize {
+  display: block;
+  width: 8px;
+  height: 1.5px;
+  border-radius: 1px;
+  background: rgba(90, 58, 6, 0.72);
+}
+
+html.desktop-custom-chrome .traffic-light-glyph--maximize {
+  display: block;
+  font-size: 9px;
+  line-height: 1;
+  font-weight: 700;
+  color: rgba(8, 58, 14, 0.72);
+}
+
+html.desktop-custom-chrome .traffic-light-glyph--maximize::before {
+  content: "+";
+}
+
+html.desktop-custom-chrome .traffic-light--close {
+  background: #ff5f57;
+}
+
+html.desktop-custom-chrome .traffic-light--minimize {
+  background: #febc2e;
+}
+
+html.desktop-custom-chrome .traffic-light--maximize {
+  background: #28c840;
+}
+
+html.desktop-custom-chrome .header-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+  -webkit-app-region: drag;
+}
+
+html.desktop-custom-chrome .header-brand::before {
+  content: "";
+  width: 3px;
+  height: 14px;
+  border-radius: 2px;
+  background: var(--accent);
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
+html.desktop-custom-chrome .header h1 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.03em;
+  flex-shrink: 0;
+}
+
+html.desktop-custom-chrome .header .subtitle {
+  display: none;
+}
+
+html.desktop-custom-chrome .header-actions,
+html.desktop-custom-chrome .header button:not(.traffic-light),
+html.desktop-custom-chrome .header a,
+html.desktop-custom-chrome .header select,
+html.desktop-custom-chrome .header .github-link,
+html.desktop-custom-chrome .header .lang-select-wrap,
+html.desktop-custom-chrome .header .header-menu-select,
+html.desktop-custom-chrome .header .header-toolbar-select-wrap {
+  -webkit-app-region: no-drag;
+}
+
+html.desktop-custom-chrome .header-actions {
+  flex-shrink: 0;
+  margin-left: auto;
+  gap: 0;
+  overflow: visible;
+}
+
+html.desktop-custom-chrome .header-actions--compact .header-actions-group {
+  padding: 1px;
+  gap: 0;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface2) 88%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  overflow: visible;
+}
+
+html.desktop-custom-chrome .header-actions--compact .header-actions-divider {
+  height: 14px;
+}
+
+html.desktop-custom-chrome .header-actions--compact .header-toolbar-control,
+html.desktop-custom-chrome .header-actions--compact .github-link {
+  min-height: 26px;
+  padding: 4px 8px;
+}
+
+html.desktop-custom-chrome .workbench.panel {
+  margin-top: 10px;
 }
 
 .app {
@@ -744,6 +1086,13 @@ body {
   border-radius: 8px;
   border: 1px solid var(--border);
   background: var(--surface);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.header-menu-select-popover--portal {
+  position: fixed;
+  top: auto;
+  left: auto;
 }
 
 .header-menu-select-option {

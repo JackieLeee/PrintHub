@@ -30,6 +30,12 @@ export const zh: Translations = {
     subtitleOffline: "ESC/POS 与 TSPL · 等待 Bridge 连接…",
     loadingHistory: "加载历史…",
   },
+  desktopChrome: {
+    windowControls: "窗口控制",
+    close: "关闭",
+    minimize: "最小化",
+    maximize: "最大化",
+  },
   sections: {
     network: "网络与端口",
     history: "打印历史",
