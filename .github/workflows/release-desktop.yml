@@ -91,8 +91,10 @@ jobs:
             gh release create "$TAG" --title "$TAG" --notes-file "$NOTES"
           fi
 
-          shopt -s globstar nullglob
-          assets=(release-assets/**)
-          if [ ${#assets[@]} -gt 0 ]; then
-            gh release upload "$TAG" "${assets[@]}" --clobber
+          mapfile -d '' files < <(find release-assets -type f \( -name '*.dmg' -o -name '*.exe' \) -print0)
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "::error::No .dmg or .exe artifacts found under release-assets/"
+            find release-assets -type f || true
+            exit 1
           fi
+          gh release upload "$TAG" "${files[@]}" --clobber
