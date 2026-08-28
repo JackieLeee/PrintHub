@@ -62,11 +62,11 @@ export class PrinterSimState {
     return [...this.events];
   }
 
-  setConfig(partial: Partial<PrinterSimConfig>): PrinterSimConfig {
+  setConfig(partial: Partial<PrinterSimConfig>, sourceIp?: string): PrinterSimConfig {
     const prev = this.config.scenario;
     this.config = resolveSimConfig({ ...this.config, ...partial });
     if (partial.scenario && partial.scenario !== prev) {
-      this.pushEvent("scenario-change", `Scenario → ${this.config.scenario}`);
+      this.pushEvent("scenario-change", `Scenario → ${this.config.scenario}`, sourceIp);
     }
     return this.getConfig();
   }

@@ -1,7 +1,8 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { DeviceConnection, HubStatus, WsClientInfo } from "@virt-printer/shared";
-import { DEFAULT_HTTP_PORT, DEFAULT_TCP_PORT, DEFAULT_WS_PORT } from "@virt-printer/shared";
+import { DEFAULT_HTTP_PORT, DEFAULT_TCP_PORT, DEFAULT_WS_PORT, MDNS_PRINTER_SERVICE_TYPE } from "@virt-printer/shared";
 import { useLocale } from "../i18n/context";
+import { isDesktopApp } from "../lib/is-desktop";
 
 interface Props {
   status: HubStatus | null;
@@ -10,6 +11,7 @@ interface Props {
   bridgeInput: string;
   showBridgeSetup: boolean;
   lanUiUrl: string | null;
+  desktopMode?: boolean;
   onBridgeInputChange: (value: string) => void;
   onConnectBridge: () => void;
   onReconnect: () => void;
@@ -65,14 +67,20 @@ export function NetworkPanel({
   bridgeInput,
   showBridgeSetup,
   lanUiUrl,
+  desktopMode = false,
   onBridgeInputChange,
   onConnectBridge,
   onReconnect,
-}: Props) {  const { t, format } = useLocale();
+}: Props) {
+  const { t, format } = useLocale();
   const hostIp = status?.hostIp ?? "—";
   const tcpPort = status?.tcpPort ?? DEFAULT_TCP_PORT;
   const wsPort = status?.wsPort ?? DEFAULT_WS_PORT;
   const httpPort = status?.httpPort ?? DEFAULT_HTTP_PORT;
+  const httpLabel =
+    desktopMode && (status?.httpPort ?? 0) <= 0
+      ? t.network.httpDisabled
+      : String(httpPort);
 
   const grouped = useMemo(() => {
     const tcp = groupTcpConnections(status?.connections ?? []);
@@ -80,11 +88,40 @@ export function NetworkPanel({
     return [...tcp, ...ws];
   }, [status?.connections, status?.wsClients]);
 
-  const bridgeStatus = connected
+  const bridgeOnline = desktopMode
+    ? Boolean(status?.listening)
+    : connected && Boolean(status?.listening);
+
+  const bridgeStatus = desktopMode
     ? status?.listening
       ? t.network.listening
-      : t.network.bridgeOnline
-    : t.network.waitingBridge;
+      : status
+        ? t.network.bridgeOnline
+        : t.network.waitingBridge
+    : connected
+      ? status?.listening
+        ? t.network.listening
+        : t.network.bridgeOnline
+      : t.network.waitingBridge;
+
+  const [lanCopied, setLanCopied] = useState(false);
+
+  async function copyLanAddress() {
+    try {
+      if (desktopMode && isDesktopApp() && window.printhubDesktop) {
+        const url = await window.printhubDesktop.copyLanUrl();
+        if (!url) return;
+      } else if (lanUiUrl) {
+        await navigator.clipboard.writeText(lanUiUrl);
+      } else {
+        return;
+      }
+      setLanCopied(true);
+      window.setTimeout(() => setLanCopied(false), 2000);
+    } catch {
+      /* clipboard denied */
+    }
+  }
 
   return (
     <div className="network-panel network-panel-compact">
@@ -106,10 +143,13 @@ export function NetworkPanel({
         </div>
       )}
 
-      {lanUiUrl && (
+      {desktopMode && lanUiUrl && (
         <div className="network-lan">
           <span className="network-lan-label">{t.network.lanAccess}</span>
           <code className="network-lan-url">{lanUiUrl}</code>
+          <button type="button" className="btn-sm" onClick={() => void copyLanAddress()}>
+            {lanCopied ? t.network.desktopCopiedLan : t.network.desktopCopyLan}
+          </button>
         </div>
       )}
 
@@ -117,16 +157,26 @@ export function NetworkPanel({
         <div>
           <div className="network-role">{t.network.localHub}</div>
           <div className="network-meta">
-            {hostIp} · TCP {tcpPort} / WS {wsPort} / HTTP {httpPort}
+            {hostIp} · TCP {tcpPort}
+            {desktopMode ? ` · ${t.network.desktopTransport}` : ` / WS ${wsPort} / HTTP ${httpLabel}`}
           </div>
         </div>
         <div className="network-row-actions">
-          <span className={`pill ${connected && status?.listening ? "ok" : "warn"}`}>{bridgeStatus}</span>
+          <span className={`pill ${bridgeOnline ? "ok" : "warn"}`}>{bridgeStatus}</span>
           <button type="button" className="btn-sm" onClick={onReconnect}>
             {t.network.reconnect}
           </button>
         </div>
       </div>
+
+      {status?.mdnsPrinter && (
+        <div className="network-hint">
+          {format(t.network.mdnsHint, {
+            service: MDNS_PRINTER_SERVICE_TYPE,
+            port: tcpPort,
+          })}
+        </div>
+      )}
 
       <div className="network-hint">
         {t.network.posHint} <code>{hostIp}:{tcpPort}</code>
@@ -156,8 +206,11 @@ export function NetworkPanel({
         ))
       )}
 
-      <div className="network-foot">
-        {t.network.wsLabel}: {wsUrl}
-      </div>
-    </div>  );
+      {!desktopMode && (
+        <div className="network-foot">
+          {t.network.wsLabel}: {wsUrl}
+        </div>
+      )}
+    </div>
+  );
 }

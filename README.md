@@ -3,6 +3,7 @@
 > **中文：** [README.zh.md](./README.zh.md)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/JackieLeee/PrintHub?label=release)](https://github.com/JackieLeee/PrintHub/releases)
 [![Node.js](https://img.shields.io/badge/Node.js-20%2B-green?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![pnpm](https://img.shields.io/badge/pnpm-9%2B-F69220?logo=pnpm&logoColor=white)](https://pnpm.io/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
@@ -24,11 +25,25 @@ Cash registers, POS apps, and label printers usually send **raw ESC/POS or TSPL*
 | **Debug** | One-click ESC/POS & TSPL samples; File / Hex / Base64 raw submit — **works offline** (local preview without Bridge) |
 | **Command reference** | Collapsible ESC/POS & TSPL command manuals in the debug panel |
 | **Printer sim** | Scenario simulation (normal, paper-out, cover-open, offline, slow, reject-job), DLE EOT status bytes, cash-drawer kick detection, live event log (last **50**) |
+| **Desktop app** | Electron app with Bridge built-in, menu-bar tray, optional LAN HTTP/WebSocket |
+| **mDNS** | Advertises `_pdl-datastream._tcp` on port **9100** for POS / macOS printer discovery |
 
 | Port | Role |
 |------|------|
-| **9100** | TCP — print data from POS or test tools |
-| **8081** | HTTP + WebSocket + embedded Web UI |
+| **9100** | TCP — print data from POS or test tools (always on) |
+| **8081** | HTTP + WebSocket + embedded Web UI (optional in desktop; always on in CLI mode) |
+
+### Desktop app (macOS)
+
+Bridge runs inside the Electron app. TCP **9100** is always available; LAN HTTP is **off by default** and can be enabled from the menu-bar tray.
+
+```bash
+pnpm install
+pnpm dev:desktop    # build & launch PrintHub.app (macOS)
+pnpm dist:desktop   # build .dmg
+```
+
+Tray menu: Bridge / TCP / LAN status, copy LAN URL, HTTP port, restart Bridge, quit.
 
 ### Printer simulation
 
@@ -99,12 +114,15 @@ curl -X POST http://localhost:8081/print/raw \
 
 **Monorepo layout**
 
-- `packages/bridge` — TCP listener, HTTP API, WebSocket relay, printer sim, static UI
-- `packages/web` — React dashboard
+- `apps/desktop` — Electron desktop app (integrated Bridge, tray, optional LAN HTTP)
+- `apps/web` — React dashboard
+- `packages/bridge` — TCP listener, HTTP API, WebSocket relay, printer sim, mDNS, static UI
 - `packages/escpos`, `packages/tspl`, `packages/renderer` — parse and render (ESC/POS inspector parser, TSPL label meta, Code128/QR canvas drawing)
 - `packages/shared`, `packages/relay-client` — types and WS client
 
-One process (`pnpm dev` / `pnpm start`): Bridge builds and serves `apps/web/dist` on port **8081**.
+**CLI mode:** `pnpm dev` / `pnpm start` builds and serves `apps/web/dist` on port **8081** in one Bridge process.
+
+**Desktop mode:** Bridge runs in the Electron main process; the UI uses IPC. Optional LAN HTTP serves the same web UI to other devices.
 
 ## Star History
 

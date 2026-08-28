@@ -9,12 +9,25 @@ export function isExternalDemoHost(hostname = window.location.hostname): boolean
   return EXTERNAL_DEMO_HOSTS.some((h) => hostname.includes(h));
 }
 
-/** Page is served by Bridge (unified UI on :8081). */
+function isLoopbackHost(hostname: string): boolean {
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]";
+}
+
+/** Page is served by Bridge (UI shares the HTTP/WS port). */
 export function isBridgeOrigin(): boolean {
   if (typeof window === "undefined") return false;
   if (import.meta.env.DEV) return false;
   if (isExternalDemoHost()) return false;
+  if (window.printhubDesktop?.isDesktop) return true;
+
   const port = window.location.port;
+  const hostname = window.location.hostname;
+
+  // Electron ui-server uses random 127.0.0.1 ports — not the Bridge HTTP port.
+  if (isLoopbackHost(hostname)) {
+    return port === String(DEFAULT_HTTP_PORT) || port === "";
+  }
+
   return port === String(DEFAULT_HTTP_PORT) || port === "";
 }
 

@@ -36,6 +36,19 @@ export interface Translations {
     bridgeSetupHint: string;
     bridgePlaceholder: string;
     bridgeConnect: string;
+    httpDisabled: string;
+    desktopTransport: string;
+    desktopBridgeTitle: string;
+    desktopBridgeHint: string;
+    desktopTrayHint: string;
+    desktopLanHttpToggle: string;
+    desktopHttpPort: string;
+    desktopDefaultHttpPort: string;
+    desktopApplyPort: string;
+    desktopCopyLan: string;
+    desktopCopiedLan: string;
+    desktopRestartBridge: string;
+    mdnsHint: string;
   };
   sim: {
     title: string;

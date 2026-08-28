@@ -1,0 +1,69 @@
+{
+  "name": "@virt-printer/desktop",
+  "private": true,
+  "version": "1.0.0",
+  "description": "PrintHub desktop app (Electron)",
+  "main": "dist/main.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.preload.json && mv -f dist/preload.js dist/preload.cjs",
+    "icons": "node scripts/generate-app-icon.mjs",
+    "dev": "pnpm build && node scripts/run-dev.mjs",
+    "dev:raw": "pnpm build && electron .",
+    "start": "pnpm build && node scripts/run-dev.mjs",
+    "pack": "pnpm icons && pnpm build && electron-builder --dir",
+    "dist": "pnpm icons && pnpm build && electron-builder --mac dmg"
+  },
+  "dependencies": {
+    "@virt-printer/bridge": "workspace:*",
+    "@virt-printer/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "electron": "^41.0.0",
+    "electron-builder": "^26.0.12",
+    "sharp": "^0.34.2",
+    "typescript": "^5.8.3"
+  },
+  "build": {
+    "appId": "dev.printhub.desktop",
+    "productName": "PrintHub",
+    "directories": {
+      "output": "release",
+      "buildResources": "assets"
+    },
+    "files": [
+      "dist/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../web/dist",
+        "to": "web",
+        "filter": ["**/*"]
+      }
+    ],
+    "asarUnpack": [
+      "**/node_modules/sharp/**",
+      "**/node_modules/@img/**",
+      "assets/**"
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "target": ["dir"],
+      "icon": "icon.icns",
+      "identity": null,
+      "extendInfo": {
+        "CFBundleName": "PrintHub",
+        "CFBundleDisplayName": "PrintHub"
+      }
+    },
+    "win": {
+      "target": ["nsis"]
+    },
+    "linux": {
+      "target": ["AppImage"]
+    }
+  }
+}

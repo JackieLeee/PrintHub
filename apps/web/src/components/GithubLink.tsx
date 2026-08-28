@@ -15,10 +15,10 @@ function GithubIcon() {
   );
 }
 
-export function GithubLink() {
+export function GithubLink({ iconOnly = false }: { iconOnly?: boolean }) {
   return (
     <a
-      className="github-link"
+      className={`github-link${iconOnly ? " github-link--icon" : ""}`}
       href={GITHUB_REPO_URL}
       target="_blank"
       rel="noopener noreferrer"
@@ -26,7 +26,7 @@ export function GithubLink() {
       aria-label="GitHub"
     >
       <GithubIcon />
-      <span>GitHub</span>
+      {!iconOnly && <span>GitHub</span>}
     </a>
   );
 }

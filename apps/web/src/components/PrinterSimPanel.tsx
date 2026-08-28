@@ -36,6 +36,13 @@ function formatEventTime(at: number): string {
   });
 }
 
+/** Legacy sim events used placeholder labels instead of client IPs. */
+function formatEventSource(sourceIp: string | undefined): string | null {
+  if (!sourceIp) return null;
+  if (sourceIp === "ui" || sourceIp === "desktop") return "127.0.0.1";
+  return sourceIp;
+}
+
 export function PrinterSimPanel({
   httpBase,
   config,
@@ -227,14 +234,17 @@ export function PrinterSimPanel({
           <div className="sim-events-empty">{t.sim.eventsEmpty}</div>
         ) : (
           <ul className="sim-events-list">
-            {sortedEvents.map((ev) => (
+            {sortedEvents.map((ev) => {
+              const eventSource = formatEventSource(ev.sourceIp);
+              return (
               <li key={ev.id} className={`sim-event sim-event--${ev.kind}`}>
                 <span className="sim-event-time">{formatEventTime(ev.at)}</span>
                 <span className="sim-event-kind">{t.sim.eventKinds[ev.kind]}</span>
                 <span className="sim-event-detail">{ev.detail}</span>
-                {ev.sourceIp && <span className="sim-event-ip">{ev.sourceIp}</span>}
+                {eventSource && <span className="sim-event-ip">{eventSource}</span>}
               </li>
-            ))}
+              );
+            })}
           </ul>
         )}
       </div>

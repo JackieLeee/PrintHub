@@ -34,6 +34,21 @@ export const en: Translations = {
       "GitHub Pages cannot reach your local Bridge. Enter the Bridge host (e.g. 192.168.1.42:8081), or open http://<host-ip>:8081 in the browser.",
     bridgePlaceholder: "192.168.1.42:8081",
     bridgeConnect: "Connect",
+    httpDisabled: "off",
+    desktopTransport: "desktop IPC",
+    desktopBridgeTitle: "Desktop Bridge",
+    desktopBridgeHint:
+      "Bridge starts with the app; TCP 9100 is always on. The toggle below controls LAN HTTP/WebSocket for browser access from other devices.",
+    desktopTrayHint:
+      "Closing the window keeps PrintHub running in the background. On macOS, use the menu bar icon (top-right) or the PrintHub menu.",
+    desktopLanHttpToggle: "Enable LAN web access (HTTP + WebSocket)",
+    desktopHttpPort: "HTTP port",
+    desktopDefaultHttpPort: "Default port {port}; enter a custom value if needed",
+    desktopApplyPort: "Apply",
+    desktopCopyLan: "Copy LAN URL",
+    desktopCopiedLan: "LAN URL copied",
+    desktopRestartBridge: "Restart Bridge",
+    mdnsHint: "mDNS discovery: _{service}._tcp · port {port} (visible to POS / macOS Add Printer)",
   },
   sim: {
     title: "Printer behavior simulation",

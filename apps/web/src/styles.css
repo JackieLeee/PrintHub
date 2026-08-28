@@ -216,8 +216,46 @@ body {
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   flex-wrap: wrap;
+}
+
+.header-actions-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+}
+
+.header-actions-group .github-link,
+.header-actions-group .lang-select-wrap {
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+}
+
+.header-actions-group .github-link:hover,
+.header-actions-group .lang-select-wrap:hover {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.version-badge {
+  font-size: 12px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  letter-spacing: 0.02em;
+}
+
+.github-link--icon {
+  padding: 6px 8px;
 }
 
 .github-link {
@@ -483,6 +521,29 @@ button:hover {
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text);
+}
+
+.network-desktop {
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface2));
+}
+
+.network-desktop-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 10px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.network-desktop .network-setup-row {
+  align-items: end;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
 }
 
 .network-lan {

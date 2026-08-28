@@ -65,7 +65,7 @@ function isEscPosStatusOrHeartbeat(payload: Uint8Array): boolean {
   return true;
 }
 
-/** Build printer status bytes for each DLE EOT n found in a TCP chunk. */
+/** Build printer status / ACK bytes for ENQ and DLE EOT polls in a TCP chunk. */
 export function buildDleEotResponses(
   payload: Uint8Array,
   config?: PrinterSimConfig,
@@ -73,6 +73,14 @@ export function buildDleEotResponses(
   if (config?.scenario === "offline") return [];
   const scenario: PrinterSimScenario = config?.scenario ?? "normal";
   const responses: Uint8Array[] = [];
+
+  for (let i = 0; i < payload.length; i++) {
+    if (payload[i] === 0x05) {
+      // ENQ — many POS drivers expect ACK before/after sending print data.
+      responses.push(new Uint8Array([0x06]));
+    }
+  }
+
   for (let i = 0; i + 2 < payload.length; i++) {
     if (
       payload[i] === 0x10 &&

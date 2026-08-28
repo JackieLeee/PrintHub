@@ -1,6 +1,8 @@
 import { useState } from "react";
 import type { HubStatus } from "@virt-printer/shared";
 import { DEFAULT_HTTP_PORT } from "@virt-printer/shared";
+import { submitImageFile } from "../lib/print-api";
+import { isDesktopApp } from "../lib/is-desktop";
 
 interface Props {
   status: HubStatus | null;
@@ -14,6 +16,9 @@ export function ImageUploadPanel({ status }: Props) {
   const hostIp = status?.hostIp ?? "localhost";
   const httpPort = status?.httpPort ?? DEFAULT_HTTP_PORT;
   const httpBase = `http://${hostIp}:${httpPort}`;
+  const endpointHint = isDesktopApp()
+    ? "桌面 IPC · printImage"
+    : `POST ${httpBase}/print/image`;
 
   async function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -21,13 +26,7 @@ export function ImageUploadPanel({ status }: Props) {
     setUploading(true);
     setMessage(null);
     try {
-      const res = await fetch(`${httpBase}/print/image?protocol=${protocol}&width=384`, {
-        method: "POST",
-        headers: { "Content-Type": file.type || "application/octet-stream" },
-        body: file,
-      });
-      const json = (await res.json()) as { ok?: boolean; jobId?: string; error?: string };
-      if (!res.ok) throw new Error(json.error ?? res.statusText);
+      const json = await submitImageFile(httpBase, file, protocol, 384);
       setMessage(`已提交 ${json.jobId ?? "job"}`);
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "上传失败");
@@ -53,7 +52,7 @@ export function ImageUploadPanel({ status }: Props) {
         </label>
       </div>
       <div className="network-hint">
-        POST <code>{httpBase}/print/image</code>
+        <code>{endpointHint}</code>
       </div>
       {message && <div className="upload-msg">{message}</div>}
     </div>

@@ -90,6 +90,8 @@ export function hubInfoFromStatus(status: HubStatus, source: HubInfo["source"] =
 }
 
 export const MDNS_SERVICE_TYPE = "virt-printer";
+/** Bonjour type for raw TCP printing (port 9100); used by macOS and many POS drivers. */
+export const MDNS_PRINTER_SERVICE_TYPE = "pdl-datastream";
 
 export interface PrintJob extends PrintJobMeta {
   /** Raw print payload as received from TCP/WebSocket. */
@@ -108,6 +110,8 @@ export interface HubStatus {
   wsClients: WsClientInfo[];
   printerSim: PrinterSimConfig;
   simEvents: PrinterSimEvent[];
+  /** mDNS printer service advertised on tcpPort (_pdl-datastream._tcp). */
+  mdnsPrinter?: boolean;
 }
 
 export function normalizeHostIp(ip: string): string {

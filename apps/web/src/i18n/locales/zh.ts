@@ -34,6 +34,21 @@ export const zh: Translations = {
       "GitHub Pages 无法直连本机 Bridge。请填写运行 Bridge 的机器 IP（如 192.168.1.42:8081），或直接在浏览器打开 http://本机IP:8081",
     bridgePlaceholder: "192.168.1.42:8081",
     bridgeConnect: "连接",
+    httpDisabled: "未开启",
+    desktopTransport: "桌面 IPC",
+    desktopBridgeTitle: "桌面 Bridge",
+    desktopBridgeHint:
+      "Bridge 随应用自动启动，TCP 9100 始终可用。下方开关仅控制局域网 HTTP/WebSocket（供其他设备浏览器访问）。",
+    desktopTrayHint:
+      "关闭窗口后应用仍在后台运行。macOS 请点击屏幕右上角菜单栏中的 PrintHub 图标；也可使用顶部「PrintHub」菜单。",
+    desktopLanHttpToggle: "开启局域网 Web 访问（HTTP + WebSocket）",
+    desktopHttpPort: "HTTP 端口",
+    desktopDefaultHttpPort: "默认端口 {port}，可自行修改",
+    desktopApplyPort: "应用",
+    desktopCopyLan: "复制局域网地址",
+    desktopCopiedLan: "已复制局域网地址",
+    desktopRestartBridge: "重启 Bridge",
+    mdnsHint: "mDNS 局域网发现：_{service}._tcp · 端口 {port}（POS / macOS 添加打印机可自动发现）",
   },
   sim: {
     title: "打印机行为模拟",

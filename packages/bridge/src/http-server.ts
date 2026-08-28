@@ -47,6 +47,10 @@ function corsPreflight(res: ServerResponse): void {
   res.end();
 }
 
+function httpClientIp(req: IncomingMessage): string {
+  return req.socket.remoteAddress?.replace("::ffff:", "") ?? "unknown";
+}
+
 export function startHttpServer(options: HttpServerOptions): Server {
   const { port, host, bridge, webRoot = null } = options;
 
@@ -81,7 +85,7 @@ export function startHttpServer(options: HttpServerOptions): Server {
       try {
         const raw = await readBody(req, 64 * 1024);
         const json = JSON.parse(raw.toString("utf8")) as Partial<import("@virt-printer/shared").PrinterSimConfig>;
-        const config = bridge.setPrinterSimConfig(json);
+        const config = bridge.setPrinterSimConfig(json, httpClientIp(req));
         sendJson(res, 200, config);
       } catch (err) {
         sendJson(res, 400, { error: err instanceof Error ? err.message : "invalid config" });
@@ -93,7 +97,7 @@ export function startHttpServer(options: HttpServerOptions): Server {
       try {
         const raw = await readBody(req, 4096);
         const json = raw.length > 0 ? (JSON.parse(raw.toString("utf8")) as { pin?: number }) : {};
-        const event = bridge.kickCashDrawer(json.pin ?? 0);
+        const event = bridge.kickCashDrawer(json.pin ?? 0, httpClientIp(req));
         sendJson(res, 200, { ok: true, event });
       } catch (err) {
         sendJson(res, 400, { error: err instanceof Error ? err.message : "kick failed" });
@@ -143,7 +147,7 @@ export function startHttpServer(options: HttpServerOptions): Server {
           return;
         }
 
-        const job = bridge.ingestRaw(payload, req.socket.remoteAddress?.replace("::ffff:", "") ?? "http");
+        const job = bridge.ingestRaw(payload, httpClientIp(req));
         sendJson(res, 200, { ok: true, jobId: job.id, byteLength: job.byteLength, protocol: job.protocol });
       } catch (err) {
         sendJson(res, 500, { error: err instanceof Error ? err.message : "print failed" });
@@ -178,7 +182,7 @@ export function startHttpServer(options: HttpServerOptions): Server {
         const job = await bridge.ingestImage(imageBuf, {
           protocol,
           maxWidth: Number.isFinite(width) ? width : 384,
-          sourceIp: req.socket.remoteAddress?.replace("::ffff:", "") ?? "http",
+          sourceIp: httpClientIp(req),
         });
         sendJson(res, 200, { ok: true, jobId: job.id, byteLength: job.byteLength });
       } catch (err) {

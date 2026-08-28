@@ -3,6 +3,7 @@
 > **English:** [README.md](./README.md)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/JackieLeee/PrintHub?label=release)](https://github.com/JackieLeee/PrintHub/releases)
 [![Node.js](https://img.shields.io/badge/Node.js-20%2B-green?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![pnpm](https://img.shields.io/badge/pnpm-9%2B-F69220?logo=pnpm&logoColor=white)](https://pnpm.io/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
@@ -24,11 +25,25 @@
 | **调试** | 一键 ESC/POS & TSPL Sample；File / Hex / Base64 原始提交 — **可离线**（无需 Bridge 本地预览） |
 | **命令手册** | 调试面板内可折叠的 ESC/POS & TSPL 命令参考 |
 | **打印机模拟** | 场景模拟（正常、缺纸、开盖、离线、慢响应、拒打）、DLE EOT 状态字节、钱箱脉冲检测、实时事件日志（最近 **50** 条） |
+| **桌面应用** | Electron 集成 Bridge、菜单栏托盘、可选局域网 HTTP/WebSocket |
+| **mDNS** | 广播 `_pdl-datastream._tcp` · 端口 **9100**，便于 POS / macOS 自动发现打印机 |
 
 | 端口 | 用途 |
 |------|------|
-| **9100** | TCP — POS 或测试工具发送打印数据 |
-| **8081** | HTTP + WebSocket + 内嵌 Web 控制台 |
+| **9100** | TCP — POS 或测试工具发送打印数据（始终开启） |
+| **8081** | HTTP + WebSocket + Web 控制台（桌面端默认关闭；CLI 模式始终开启） |
+
+### 桌面应用（macOS）
+
+Bridge 内置于 Electron 主进程。TCP **9100** 始终可用；局域网 HTTP **默认关闭**，可在菜单栏托盘中开启。
+
+```bash
+pnpm install
+pnpm dev:desktop    # 构建并启动 PrintHub.app（macOS）
+pnpm dist:desktop   # 打包 .dmg
+```
+
+托盘菜单：Bridge / TCP / 局域网状态、复制局域网地址、HTTP 端口、重启 Bridge、退出。
 
 ### 打印机模拟
 
@@ -100,12 +115,15 @@ curl -X POST http://localhost:8081/print/raw \
 
 **Monorepo 结构**
 
-- `packages/bridge` — TCP 监听、HTTP API、WebSocket、打印机模拟、静态 UI
-- `packages/web` — React 控制台
+- `apps/desktop` — Electron 桌面应用（集成 Bridge、托盘、可选局域网 HTTP）
+- `apps/web` — React 控制台
+- `packages/bridge` — TCP 监听、HTTP API、WebSocket、mDNS、打印机模拟、静态 UI
 - `packages/escpos`、`packages/tspl`、`packages/renderer` — 解析与渲染（ESC/POS 命令解析、TSPL 标签元数据、Code128/QR Canvas 绘制）
 - `packages/shared`、`packages/relay-client` — 类型与 WS 客户端
 
-一条命令（`pnpm dev` / `pnpm start`）即可：Bridge 构建并托管 `apps/web/dist`，统一在 **8081** 端口访问。
+**CLI 模式：** `pnpm dev` / `pnpm start` 构建并托管 `apps/web/dist`，Bridge 统一在 **8081** 端口。
+
+**桌面模式：** Bridge 在 Electron 主进程运行；UI 通过 IPC 通信。可选局域网 HTTP 向其他设备提供相同 Web UI。
 
 ## Star 趋势
 

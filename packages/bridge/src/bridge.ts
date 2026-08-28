@@ -35,6 +35,10 @@ export interface BridgeOptions {
   wsPort?: number;
   httpPort?: number;
   host?: string;
+  /** When false, only TCP listens (e.g. desktop IPC). Defaults to true. */
+  enableHttp?: boolean;
+  /** Serve embedded Web UI on HTTP when HTTP is enabled. Defaults to true. */
+  serveStaticUi?: boolean;
 }
 
 function getLocalIp(): string {
@@ -66,14 +70,18 @@ export class VirtPrinterBridge {
   private wsPort: number;
   private httpPort: number;
   private host: string;
+  private enableHttp: boolean;
+  private serveStaticUi: boolean;
   private tcpServer: Server | null = null;
   private wss: WebSocketServer | null = null;
   private httpServer: HttpServer | null = null;
   private connections = new Map<string, DeviceConnection>();
   private wsClients = new Map<string, { ws: WebSocket; info: WsClientInfo }>();
+  private messageListeners = new Set<(message: BridgeMessage) => void>();
   private jobCounter = 0;
   private pingTimer: ReturnType<typeof setInterval> | null = null;
   private mdns: MdnsHandle | null = null;
+  private mdnsPrinter = false;
   private webRoot: string | null = null;
   private printerSim = new PrinterSimState();
 
@@ -81,47 +89,69 @@ export class VirtPrinterBridge {
     this.hubInstanceId = randomUUID();
     this.tcpPort = options.tcpPort ?? DEFAULT_TCP_PORT;
     this.httpPort = options.httpPort ?? DEFAULT_HTTP_PORT;
+    this.enableHttp = options.enableHttp ?? true;
+    this.serveStaticUi = options.serveStaticUi ?? true;
     // WebSocket shares the HTTP server port (unified UI + API + WS).
     this.wsPort = options.wsPort ?? this.httpPort;
     this.host = options.host ?? "0.0.0.0";
   }
 
+  /** Subscribe to bridge events (for Electron IPC). Returns an unsubscribe function. */
+  subscribe(listener: (message: BridgeMessage) => void): () => void {
+    this.messageListeners.add(listener);
+    return () => this.messageListeners.delete(listener);
+  }
+
   async start(): Promise<void> {
     await this.startTcp();
-    this.webRoot = resolveWebRoot();
-    this.httpServer = startHttpServer({
-      port: this.httpPort,
-      host: this.host,
-      bridge: this,
-      webRoot: this.webRoot,
-    });
-    await this.attachWebSocket(this.httpServer);
-    this.startWsPing();
-    this.mdns = startMdnsAdvertise({
-      name: `virt-printer-${hostname()}`,
-      hostIp: getLocalIp(),
-      wsPort: this.wsPort,
-      tcpPort: this.tcpPort,
-      httpPort: this.httpPort,
-    });
-    this.broadcastStatus();
     const lan = getLocalIp();
-    if (this.webRoot) {
-      console.log(
-        `[bridge] UI http://${lan}:${this.httpPort} · TCP ${this.tcpPort} · WS ${this.wsPort} (same port)`,
-      );
+
+    if (this.enableHttp) {
+      this.webRoot = this.serveStaticUi ? resolveWebRoot() : null;
+      this.httpServer = startHttpServer({
+        port: this.httpPort,
+        host: this.host,
+        bridge: this,
+        webRoot: this.webRoot,
+      });
+      await this.attachWebSocket(this.httpServer);
+      this.startWsPing();
+      if (this.webRoot) {
+        console.log(
+          `[bridge] UI http://${lan}:${this.httpPort} · TCP ${this.tcpPort} · WS ${this.wsPort} (same port)`,
+        );
+      } else {
+        console.log(
+          `[bridge] LAN API http://${lan}:${this.httpPort} · TCP ${this.tcpPort} · WS ${this.wsPort}`,
+        );
+      }
     } else {
-      console.log(
-        `[bridge] TCP ${this.tcpPort} · HTTP ${this.httpPort} · WS ${this.wsPort} · LAN ${lan}`,
-      );
-      console.log("[bridge] Web UI not found — run: pnpm --filter @virt-printer/web build");
+      this.webRoot = null;
+      console.log(`[bridge] TCP ${this.tcpPort} · LAN ${lan} (HTTP/WS disabled)`);
     }
+
+    try {
+      this.mdns = startMdnsAdvertise({
+        name: `PrintHub-${hostname()}`,
+        hostIp: lan,
+        wsPort: this.enableHttp ? this.wsPort : 0,
+        tcpPort: this.tcpPort,
+        httpPort: this.enableHttp ? this.httpPort : 0,
+      });
+      this.mdnsPrinter = true;
+    } catch (err) {
+      this.mdnsPrinter = false;
+      console.warn("[bridge] mDNS start failed:", err);
+    }
+
+    this.broadcastStatus();
   }
 
   async stop(): Promise<void> {
     if (this.pingTimer) clearInterval(this.pingTimer);
     this.mdns?.stop();
     this.mdns = null;
+    this.mdnsPrinter = false;
     for (const { ws } of this.wsClients.values()) ws.close();
     this.wsClients.clear();
     this.wss?.close();
@@ -137,13 +167,13 @@ export class VirtPrinterBridge {
     return this.printerSim.getConfig();
   }
 
-  setPrinterSimConfig(partial: Partial<PrinterSimConfig>): PrinterSimConfig {
-    const config = this.printerSim.setConfig(partial);
+  setPrinterSimConfig(partial: Partial<PrinterSimConfig>, sourceIp?: string): PrinterSimConfig {
+    const config = this.printerSim.setConfig(partial, sourceIp);
     this.broadcastStatus();
     return config;
   }
 
-  kickCashDrawer(pin = 0, sourceIp = "ui"): PrinterSimEvent | null {
+  kickCashDrawer(pin = 0, sourceIp = "127.0.0.1"): PrinterSimEvent | null {
     const event = this.printerSim.recordCashDrawer(sourceIp, pin, 60, 120, true);
     if (event) this.broadcast({ type: "sim.event", event });
     return event;
@@ -289,6 +319,13 @@ export class VirtPrinterBridge {
       }
       if (isMeaningfulPrintJob(prepared, protocol)) {
         this.emitJob(connection, payload, "tcp");
+        if (!this.printerSim.isOffline()) {
+          try {
+            socket.write(Buffer.from([0x06]));
+          } catch {
+            /* socket may already be closed */
+          }
+        }
       }
     };
 
@@ -390,13 +427,14 @@ export class VirtPrinterBridge {
       hubInstanceId: this.hubInstanceId,
       hostIp: getLocalIp(),
       tcpPort: this.tcpPort,
-      wsPort: this.wsPort,
-      httpPort: this.httpPort,
+      wsPort: this.enableHttp ? this.wsPort : 0,
+      httpPort: this.enableHttp ? this.httpPort : 0,
       listening: true,
       connections: [...this.connections.values()],
       wsClients: [...this.wsClients.values()].map((c) => c.info),
       printerSim: this.printerSim.getConfig(),
       simEvents: this.printerSim.getEvents(),
+      mdnsPrinter: this.mdnsPrinter,
     };
   }
 
@@ -405,6 +443,13 @@ export class VirtPrinterBridge {
   }
 
   private broadcast(message: BridgeMessage): void {
+    for (const listener of this.messageListeners) {
+      try {
+        listener(message);
+      } catch (err) {
+        console.warn("[bridge] message listener error:", err);
+      }
+    }
     const data = JSON.stringify(message);
     for (const { ws } of this.wsClients.values()) {
       if (ws.readyState === ws.OPEN) ws.send(data);

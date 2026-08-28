@@ -2,12 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { HubStatus, PrintJobMeta, PrinterSimConfig, PrinterSimEvent } from "@virt-printer/shared";
 import { DEFAULT_TCP_PORT, hubIdFromStatus } from "@virt-printer/shared";
 import { RelayClient } from "@virt-printer/relay-client";
+import { DesktopRelayClient } from "./lib/desktop-relay-client";
+import { isDesktopApp, isDesktopShell } from "./lib/is-desktop";
 import { isMeaningfulPrintJob } from "@virt-printer/escpos";
 import { parseTspl, formatLabelSize, isTsplPayload } from "@virt-printer/tspl";
 import { renderEscPosPreview, renderTsplToCanvas } from "@virt-printer/renderer";
-import { GithubLink } from "./components/GithubLink";
-import { LanguageSwitcher } from "./components/LanguageSwitcher";
-import { ThemeSwitcher } from "./components/ThemeSwitcher";
+import { AppHeaderActions } from "./components/AppHeaderActions";
 import { NetworkPanel } from "./components/NetworkPanel";
 import { PrintHistory } from "./components/PrintHistory";
 import { PreviewPanel } from "./components/PreviewPanel";
@@ -50,8 +50,11 @@ export function App() {
   const [historyReady, setHistoryReady] = useState(false);
   const [openPanel, setOpenPanel] = useState<"network" | "debug" | null>("network");
   const [cmdRefOpen, setCmdRefOpen] = useState(false);
-  const clientRef = useRef<RelayClient | null>(null);
+  const clientRef = useRef<RelayClient | DesktopRelayClient | null>(null);
   const activeHubIdRef = useRef<string>("");
+  const desktopShell = isDesktopShell();
+  const [ipcReady, setIpcReady] = useState(() => isDesktopApp());
+  const desktopMode = desktopShell && ipcReady;
 
   const activeHubId = status ? hubIdFromStatus(status) : LOCAL_HUB_ID;
 
@@ -139,6 +142,29 @@ export function App() {
 
   const connect = useCallback(() => {
     clientRef.current?.disconnect();
+
+    if (desktopMode) {
+      const client = new DesktopRelayClient({
+        onOpen: () => setConnected(true),
+        onClose: () => {
+          setConnected(false);
+          setStatus(null);
+        },
+        onError: () => setConnected(false),
+        onStatus: (next) => {
+          setStatus(next);
+          setConnected(true);
+        },
+        onJob: addJob,
+        onMessage: (msg) => {
+          if (msg.type === "sim.event") applySimEvent(msg.event);
+        },
+      });
+      clientRef.current = client;
+      client.connect();
+      return;
+    }
+
     const client = new RelayClient(wsUrl, {
       onOpen: () => setConnected(true),
       onClose: () => {
@@ -154,15 +180,42 @@ export function App() {
     });
     clientRef.current = client;
     client.connect();
-  }, [wsUrl, addJob, applySimEvent]);
+  }, [wsUrl, addJob, applySimEvent, desktopMode]);
 
   useEffect(() => {
+    if (!desktopMode) return;
+    const pull = () => {
+      void window.printhubDesktop?.getBridgeStatus().then((next) => {
+        if (next) {
+          setStatus(next);
+          setConnected(true);
+        }
+      });
+    };
+    pull();
+    const timer = window.setInterval(pull, 3000);
+    return () => window.clearInterval(timer);
+  }, [desktopMode, status?.httpPort, status?.hubInstanceId]);
+
+  useEffect(() => {
+    if (!desktopShell || ipcReady) return;
+    const id = window.setInterval(() => {
+      if (isDesktopApp()) {
+        setIpcReady(true);
+        window.clearInterval(id);
+      }
+    }, 50);
+    return () => window.clearInterval(id);
+  }, [desktopShell, ipcReady]);
+
+  useEffect(() => {
+    if (desktopShell && !ipcReady) return;
     connect();
     return () => {
       clientRef.current?.disconnect();
       void flushHistory();
     };
-  }, [connect]);
+  }, [connect, desktopShell, ipcReady]);
 
   useEffect(() => {
     if (!connected || !status) return;
@@ -277,12 +330,10 @@ export function App() {
               : t.app.subtitleOffline}
           </p>
         </div>
-        <div className="header-actions">
-          <GithubLink />
-          <ThemeSwitcher />
-          <LanguageSwitcher />
-          {!historyReady && <span className="badge">{t.app.loadingHistory}</span>}
-        </div>
+        <AppHeaderActions
+          historyLoading={!historyReady}
+          loadingLabel={t.app.loadingHistory}
+        />
       </header>
 
       <div className="toolbelt">
@@ -302,8 +353,14 @@ export function App() {
         >
           {t.toolbelt.debug} {openPanel === "debug" ? "▴" : "▾"}
         </button>
-        <span className={`pill ${connected ? "ok" : "warn"}`}>
-          {connected ? t.network.bridgeOnline : t.network.waitingBridge}
+        <span className={`pill ${(desktopMode ? Boolean(status?.listening) : connected) ? "ok" : "warn"}`}>
+          {desktopMode
+            ? status?.listening
+              ? t.network.bridgeOnline
+              : t.network.waitingBridge
+            : connected
+              ? t.network.bridgeOnline
+              : t.network.waitingBridge}
         </span>
         {hostIp && (
           <span className="toolbelt-meta">
@@ -317,10 +374,19 @@ export function App() {
           <NetworkPanel
             status={status}
             connected={connected}
-            wsUrl={wsUrl}
+            wsUrl={desktopMode ? "IPC (desktop)" : wsUrl}
             bridgeInput={bridgeInput}
-            showBridgeSetup={isExternalDemoHost() || (!connected && !isBridgeOrigin())}
-            lanUiUrl={hostIp ? lanUiUrl(hostIp, status?.httpPort) : null}
+            showBridgeSetup={!desktopMode && (isExternalDemoHost() || (!connected && !isBridgeOrigin()))}
+            lanUiUrl={
+              desktopMode
+                ? status?.httpPort && status.httpPort > 0 && status.hostIp
+                  ? lanUiUrl(status.hostIp, status.httpPort)
+                  : null
+                : hostIp && status?.httpPort
+                  ? lanUiUrl(hostIp, status.httpPort)
+                  : null
+            }
+            desktopMode={desktopMode}
             onBridgeInputChange={setBridgeInput}
             onConnectBridge={() => connectBridge()}
             onReconnect={connect}

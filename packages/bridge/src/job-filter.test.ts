@@ -1,6 +1,7 @@
 import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import {
+  buildDleEotResponses,
   isMeaningfulPrintJob,
   prepareTcpPrintPayload,
   trimTrailingStatusPolls,
@@ -18,6 +19,13 @@ describe("job-filter", () => {
     strictEqual(trimmed.length, print.length + 1);
     strictEqual(trimmed[0], 0x48);
     strictEqual(trimmed[trimmed.length - 1], 0x0a);
+  });
+
+  it("responds to ENQ with ACK", () => {
+    const enq = new Uint8Array([0x05]);
+    const responses = buildDleEotResponses(enq);
+    strictEqual(responses.length, 1);
+    strictEqual(responses[0]![0], 0x06);
   });
 
   it("prepareTcpPrintPayload drops heartbeat-only packets", () => {
