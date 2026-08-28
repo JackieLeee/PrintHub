@@ -10,6 +10,7 @@ import {
 import { en } from "./locales/en.js";
 import { zh } from "./locales/zh.js";
 import type { Locale, Translations } from "./types.js";
+import { isDesktopApp } from "../lib/is-desktop.js";
 
 const STORAGE_KEY = "virt-printer-locale";
 
@@ -44,9 +45,41 @@ const LocaleContext = createContext<LocaleContextValue | null>(null);
 export function LocaleProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>(readInitialLocale);
 
+  useEffect(() => {
+    if (!isDesktopApp()) return;
+    void window.printhubDesktop?.getUiLocale().then((saved) => {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      const fromStorage = stored === "en" || stored === "zh" ? stored : null;
+      if (fromStorage) {
+        setLocaleState(fromStorage);
+        if (fromStorage !== saved) {
+          void window.printhubDesktop?.setUiLocale(fromStorage);
+        }
+        return;
+      }
+      if (saved === "en" || saved === "zh") {
+        setLocaleState(saved);
+        localStorage.setItem(STORAGE_KEY, saved);
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!isDesktopApp()) return;
+    return window.printhubDesktop?.onUiLocaleChanged((next) => {
+      if (next === "en" || next === "zh") {
+        setLocaleState(next);
+        localStorage.setItem(STORAGE_KEY, next);
+      }
+    });
+  }, []);
+
   const setLocale = useCallback((next: Locale) => {
     setLocaleState(next);
     localStorage.setItem(STORAGE_KEY, next);
+    if (isDesktopApp()) {
+      void window.printhubDesktop?.setUiLocale(next);
+    }
   }, []);
 
   useEffect(() => {

@@ -30,6 +30,20 @@ import {
   saveSettings,
   type DesktopSettings,
 } from "./settings.js";
+import {
+  desktopFormat,
+  getDesktopTranslations,
+  normalizeUiLocale,
+  resolveSystemLocale,
+  type DesktopLocale,
+} from "./i18n/index.js";
+import { buildPortPromptHtml } from "./port-prompt-html.js";
+import { menuIcons } from "./menu-icons.js";
+import {
+  actionMenuLabel,
+  statusMenuLabel,
+  trayMenuIcon,
+} from "./menu-tray-display.js";
 
 let bridge: VirtPrinterBridge | null = null;
 let unsubscribeBridge: (() => void) | null = null;
@@ -38,6 +52,41 @@ let tray: Tray | null = null;
 let settings: DesktopSettings = loadSettings();
 let isQuitting = false;
 const ipcSubscribers = new Set<WebContents>();
+
+function desktopLocale(): DesktopLocale {
+  return settings.uiLocale ?? resolveSystemLocale();
+}
+
+function dt() {
+  return getDesktopTranslations(desktopLocale());
+}
+
+function df(template: string, vars: Record<string, string | number> = {}): string {
+  return desktopFormat(template, vars);
+}
+
+function broadcastUiLocale(locale: DesktopLocale): void {
+  const targets = new Set<WebContents>();
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    targets.add(mainWindow.webContents);
+  }
+  for (const wc of ipcSubscribers) {
+    if (!wc.isDestroyed()) targets.add(wc);
+  }
+  for (const wc of targets) {
+    wc.send("desktop:ui-locale-changed", locale);
+  }
+}
+
+function applyUiLocale(next: DesktopLocale, notifyRenderer = true): DesktopLocale {
+  if (next !== settings.uiLocale) {
+    settings = { ...settings, uiLocale: next };
+    saveSettings(settings);
+    updateTrayMenu();
+  }
+  if (notifyRenderer) broadcastUiLocale(next);
+  return next;
+}
 
 function lanUrl(): string | null {
   if (!settings.lanHttpEnabled) return null;
@@ -100,10 +149,8 @@ function showMainWindow(): void {
 function createMainWindow(): void {
   const iconPath = resolveAppIconPath();
   if (!resolveWebRoot()) {
-    dialog.showErrorBox(
-      "缺少 Web UI",
-      "未找到 apps/web/dist/index.html。请先运行：pnpm build:web:desktop",
-    );
+    const d = dt().dialog;
+    dialog.showErrorBox(d.missingWebUiTitle, d.missingWebUiMessage);
     app.quit();
     return;
   }
@@ -208,7 +255,7 @@ async function persistSettingsAndRestart(next: DesktopSettings): Promise<boolean
     saveSettings(settings);
     updateTrayMenu();
     await dialog.showErrorBox(
-      "Bridge 启动失败",
+      dt().dialog.bridgeStartFailedTitle,
       err instanceof Error ? err.message : String(err),
     );
     try {
@@ -226,14 +273,16 @@ async function persistSettingsAndRestart(next: DesktopSettings): Promise<boolean
 }
 
 async function promptCustomPort(current: number): Promise<number | null> {
+  const t = dt().portPrompt;
   return new Promise((resolve) => {
     const promptWin = new BrowserWindow({
-      width: 400,
-      height: 240,
+      width: 420,
+      height: 280,
       resizable: false,
       minimizable: false,
       maximizable: false,
-      title: "HTTP 端口",
+      title: t.title,
+      backgroundColor: "#171a22",
       parent: mainWindow ?? undefined,
       modal: Boolean(mainWindow),
       webPreferences: {
@@ -241,6 +290,7 @@ async function promptCustomPort(current: number): Promise<number | null> {
         contextIsolation: false,
       },
     });
+    promptWin.setMenuBarVisibility(false);
 
     const channelOk = `desktop:port-ok:${Date.now()}`;
     const channelCancel = `desktop:port-cancel:${Date.now()}`;
@@ -269,20 +319,19 @@ async function promptCustomPort(current: number): Promise<number | null> {
       return port;
     });
 
-    const html = `<!doctype html><html><body style="font:13px system-ui;margin:16px;color:#e8eaef;background:#171a22">
-<p style="margin:0 0 8px;line-height:1.5">默认端口 <strong>${DEFAULT_HTTP_PORT}</strong>。TCP ${DEFAULT_TCP_PORT} 固定不可改。</p>
-<p style="margin:0 0 12px;color:#9aa3b2;font-size:12px">修改后会重启局域网 HTTP/WebSocket 服务。</p>
-<label>自定义 HTTP 端口（${MIN_HTTP_PORT}–${MAX_HTTP_PORT}）</label><br/>
-<input id="p" type="number" min="${MIN_HTTP_PORT}" max="${MAX_HTTP_PORT}" value="${current}" style="width:100%;margin:12px 0;padding:6px;box-sizing:border-box"/>
-<div style="text-align:right;display:flex;gap:8px;justify-content:flex-end">
-<button id="c">取消</button>
-<button id="o">确定</button>
-</div>
-<script>
-const { ipcRenderer } = require('electron');
-document.getElementById('c').onclick = () => ipcRenderer.invoke('${channelCancel}');
-document.getElementById('o').onclick = () => ipcRenderer.invoke('${channelOk}', document.getElementById('p').value);
-</script></body></html>`;
+    const html = buildPortPromptHtml({
+      title: t.title,
+      hintHtml: df(t.hint, { default: DEFAULT_HTTP_PORT, tcp: DEFAULT_TCP_PORT }),
+      note: t.note,
+      label: df(t.label, { min: MIN_HTTP_PORT, max: MAX_HTTP_PORT }),
+      cancel: t.cancel,
+      ok: t.ok,
+      current,
+      min: MIN_HTTP_PORT,
+      max: MAX_HTTP_PORT,
+      channelOk,
+      channelCancel,
+    });
 
     promptWin.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
     promptWin.on("closed", () => {
@@ -294,10 +343,11 @@ document.getElementById('o').onclick = () => ipcRenderer.invoke('${channelOk}', 
 
 async function changeHttpPort(): Promise<void> {
   if (!settings.lanHttpEnabled) {
+    const d = dt().dialog;
     await dialog.showMessageBox({
       type: "info",
-      title: "局域网 HTTP 未开启",
-      message: "请先在菜单中开启「局域网 Web 访问」，再配置 HTTP 端口。",
+      title: d.lanHttpOffTitle,
+      message: d.lanHttpOffMessage,
     });
     return;
   }
@@ -333,16 +383,12 @@ async function restartBridge(): Promise<void> {
     pushStatusToSubscribers();
     updateTrayMenu();
   } catch (err) {
-    dialog.showErrorBox("重启失败", err instanceof Error ? err.message : String(err));
+    dialog.showErrorBox(dt().dialog.restartFailedTitle, err instanceof Error ? err.message : String(err));
   }
 }
 
-function trafficLabel(state: "green" | "yellow" | "red", text: string): string {
-  const dot = state === "green" ? "🟢" : state === "yellow" ? "🟡" : "🔴";
-  return `${dot} ${text}`;
-}
-
 function buildTrayStatusItems(): MenuItemConstructorOptions[] {
+  const t = dt().menu;
   const status = bridge?.getPublicStatus();
   const bridgeUp = Boolean(status?.listening);
   const tcpUp = bridgeUp;
@@ -358,55 +404,101 @@ function buildTrayStatusItems(): MenuItemConstructorOptions[] {
         ? "yellow"
         : "red";
 
+  const mdnsState: "green" | "yellow" | "red" = status?.mdnsPrinter
+    ? "green"
+    : bridgeUp
+      ? "yellow"
+      : "red";
+
   const lanDetail = !lanEnabled
-    ? "已关闭（默认）"
+    ? t.lanDisabled
     : lanUp
       ? `HTTP ${status?.httpPort} · ${hostIp}`
       : bridgeUp
-        ? "HTTP 启动中…"
-        : "Bridge 未运行";
+        ? t.lanStarting
+        : t.bridgeNotRunning;
 
   return [
-    { label: "当前状态", enabled: false },
     {
-      label: trafficLabel(bridgeUp ? "green" : "red", bridgeUp ? "Bridge · 运行中" : "Bridge · 未运行"),
+      label: t.currentStatus,
+      icon: trayMenuIcon(() => menuIcons.statusHeader()),
       enabled: false,
     },
     {
-      label: trafficLabel(tcpUp ? "green" : "red", `TCP ${DEFAULT_TCP_PORT} · ${tcpUp ? "监听中" : "未监听"}`),
+      label: statusMenuLabel(bridgeUp ? "green" : "red", bridgeUp ? t.bridgeRunning : t.bridgeStopped),
+      icon: trayMenuIcon(() => menuIcons.statusRow("bridge", bridgeUp ? "green" : "red")),
       enabled: false,
     },
     {
-      label: trafficLabel(
-        status?.mdnsPrinter ? "green" : bridgeUp ? "yellow" : "red",
-        status?.mdnsPrinter
-          ? `mDNS · _${MDNS_PRINTER_SERVICE_TYPE}._tcp · ${DEFAULT_TCP_PORT}`
-          : "mDNS · 未广播",
+      label: statusMenuLabel(
+        tcpUp ? "green" : "red",
+        `TCP ${DEFAULT_TCP_PORT} · ${tcpUp ? t.tcpListening : t.tcpNotListening}`,
       ),
+      icon: trayMenuIcon(() => menuIcons.statusRow("tcp", tcpUp ? "green" : "red")),
       enabled: false,
     },
     {
-      label: trafficLabel(lanState, `局域网 HTTP · ${lanDetail}`),
+      label: statusMenuLabel(
+        mdnsState,
+        status?.mdnsPrinter
+          ? df(t.mdnsOn, { type: MDNS_PRINTER_SERVICE_TYPE, port: DEFAULT_TCP_PORT })
+          : t.mdnsOff,
+      ),
+      icon: trayMenuIcon(() => menuIcons.statusRow("mdns", mdnsState)),
+      enabled: false,
+    },
+    {
+      label: statusMenuLabel(lanState, `${t.lanHttp} · ${lanDetail}`),
+      icon: trayMenuIcon(() => menuIcons.statusRow("lan", lanState)),
       enabled: false,
     },
     { type: "separator" },
   ];
 }
 
+function buildLanguageMenuItems(): MenuItemConstructorOptions[] {
+  const t = dt().menu;
+  const current = desktopLocale();
+  return [
+    { type: "separator" },
+    {
+      label: actionMenuLabel("language", t.language),
+      icon: trayMenuIcon(() => menuIcons.language()),
+      submenu: [
+        {
+          label: t.languageEn,
+          type: "radio",
+          checked: current === "en",
+          click: () => applyUiLocale("en"),
+        },
+        {
+          label: t.languageZh,
+          type: "radio",
+          checked: current === "zh",
+          click: () => applyUiLocale("zh"),
+        },
+      ],
+    },
+  ];
+}
+
 function buildTrayActionItems(): MenuItemConstructorOptions[] {
+  const t = dt().menu;
   const url = lanUrl();
   const httpPortLabel = settings.lanHttpEnabled
-    ? `HTTP 端口…（当前 ${settings.httpPort}，默认 ${DEFAULT_HTTP_PORT}）`
-    : `HTTP 端口…（默认 ${DEFAULT_HTTP_PORT}，需先开启局域网）`;
+    ? df(t.httpPortWithCurrent, { current: settings.httpPort, default: DEFAULT_HTTP_PORT })
+    : df(t.httpPortLanOff, { default: DEFAULT_HTTP_PORT });
 
   return [
     {
-      label: "打开控制台",
+      label: actionMenuLabel("openConsole", t.openConsole),
+      icon: trayMenuIcon(() => menuIcons.openConsole()),
       accelerator: "CommandOrControl+O",
       click: () => showMainWindow(),
     },
     {
-      label: "复制局域网地址",
+      label: actionMenuLabel("copyLanUrl", t.copyLanUrl),
+      icon: trayMenuIcon(() => menuIcons.copyLink()),
       enabled: Boolean(url),
       click: () => {
         if (url) clipboard.writeText(url);
@@ -414,21 +506,32 @@ function buildTrayActionItems(): MenuItemConstructorOptions[] {
     },
     { type: "separator" },
     {
-      label: settings.lanHttpEnabled ? "关闭局域网 Web 访问" : "开启局域网 Web 访问",
+      label: actionMenuLabel(
+        "lanWeb",
+        settings.lanHttpEnabled ? t.disableLanWeb : t.enableLanWeb,
+      ),
+      icon: trayMenuIcon(() => menuIcons.lanToggle(settings.lanHttpEnabled)),
       click: () => void toggleLanHttp(),
     },
     {
-      label: httpPortLabel,
+      label: actionMenuLabel("httpPort", httpPortLabel),
+      icon: trayMenuIcon(() => menuIcons.httpPort()),
       click: () => void changeHttpPort(),
     },
     {
-      label: settings.autoLaunch ? "关闭开机自启" : "开启开机自启",
+      label: actionMenuLabel(
+        "autoLaunch",
+        settings.autoLaunch ? t.disableAutoLaunch : t.enableAutoLaunch,
+      ),
+      icon: trayMenuIcon(() => menuIcons.autoLaunch(settings.autoLaunch)),
       click: () => void toggleAutoLaunch(),
     },
     {
-      label: "重启 Bridge",
+      label: actionMenuLabel("restartBridge", t.restartBridge),
+      icon: trayMenuIcon(() => menuIcons.restart()),
       click: () => void restartBridge(),
     },
+    ...buildLanguageMenuItems(),
   ];
 }
 
@@ -438,7 +541,8 @@ function buildServiceMenuItems(): MenuItemConstructorOptions[] {
 
 function quitMenuItem(): MenuItemConstructorOptions {
   return {
-    label: "退出 PrintHub",
+    label: dt().menu.quit,
+    icon: trayMenuIcon(() => menuIcons.quit()),
     accelerator: "CommandOrControl+Q",
     click: () => {
       isQuitting = true;
@@ -452,11 +556,12 @@ function buildTrayMenu(): Menu {
 }
 
 function installApplicationMenu(): void {
+  const t = dt().menu;
   const template: MenuItemConstructorOptions[] = [];
 
   if (process.platform === "darwin") {
     template.push({
-      label: "Edit",
+      label: t.edit,
       submenu: [
         { role: "undo" },
         { role: "redo" },
@@ -485,7 +590,7 @@ function installApplicationMenu(): void {
     });
   } else {
     template.push({
-      label: "Edit",
+      label: t.edit,
       submenu: [
         { role: "undo" },
         { role: "redo" },
@@ -509,7 +614,8 @@ function installApplicationMenu(): void {
 function updateTrayMenu(): void {
   installApplicationMenu();
   tray?.setContextMenu(buildTrayMenu());
-  const httpPart = settings.lanHttpEnabled ? ` · HTTP ${settings.httpPort}` : " · HTTP 关";
+  const t = dt().menu;
+  const httpPart = settings.lanHttpEnabled ? ` · HTTP ${settings.httpPort}` : t.trayHttpOff;
   tray?.setToolTip(`PrintHub · TCP ${DEFAULT_TCP_PORT}${httpPart}`);
 }
 
@@ -527,16 +633,15 @@ async function maybePromptMenuBarPermission(): Promise<void> {
   if (!isMacOs26OrLater() || settings.menuBarHintDismissed) return;
 
   const appName = menuBarPermissionAppName();
+  const d = dt().dialog;
   const { response } = await dialog.showMessageBox({
     type: "info",
-    buttons: ["打开系统设置", "知道了，不再提示"],
+    buttons: [d.openSystemSettings, d.dismissHint],
     defaultId: 0,
     cancelId: 1,
-    title: "菜单栏图标需要授权",
-    message: "PrintHub 托盘已创建，但 macOS 26 默认隐藏新菜单栏项。",
-    detail:
-      `请前往「系统设置 → 菜单栏」，将「${appName}」开关打开。\n\n` +
-      "若列表中没有 PrintHub，请先通过 PrintHub.app 启动（pnpm dev:desktop 会自动打包并打开）。",
+    title: d.menuBarPermTitle,
+    message: d.menuBarPermMessage,
+    detail: df(d.menuBarPermDetail, { appName }),
   });
 
   if (response === 0) {
@@ -631,6 +736,12 @@ function registerDesktopIpc(): void {
     if (url) clipboard.writeText(url);
     return url;
   });
+  ipcMain.handle("desktop:get-ui-locale", () => desktopLocale());
+  ipcMain.handle("desktop:set-ui-locale", (_event, locale: unknown) => {
+    const next = normalizeUiLocale(locale);
+    if (!next) return desktopLocale();
+    return applyUiLocale(next, false);
+  });
 }
 
 function applyAppIcon(): void {
@@ -656,10 +767,8 @@ async function bootstrap(): Promise<void> {
 
   const webRoot = resolveWebRoot();
   if (!webRoot) {
-    dialog.showErrorBox(
-      "缺少 Web UI",
-      "未找到 apps/web/dist/index.html。请先运行：pnpm build:web:desktop",
-    );
+    const d = dt().dialog;
+    dialog.showErrorBox(d.missingWebUiTitle, d.missingWebUiMessage);
     app.quit();
     return;
   }
@@ -672,7 +781,7 @@ async function bootstrap(): Promise<void> {
     }
   } catch (err) {
     dialog.showErrorBox(
-      "UI 启动失败",
+      dt().dialog.uiStartFailedTitle,
       err instanceof Error ? err.message : String(err),
     );
     app.quit();
@@ -686,11 +795,13 @@ async function bootstrap(): Promise<void> {
   try {
     await startBridge();
   } catch (err) {
+    const d = dt().dialog;
+    const message = err instanceof Error ? err.message : String(err);
     dialog.showErrorBox(
-      "PrintHub 启动失败",
+      d.appStartFailedTitle,
       settings.lanHttpEnabled
-        ? `Bridge 无法在 HTTP ${settings.httpPort} 启动：${err instanceof Error ? err.message : String(err)}`
-        : `Bridge 无法启动：${err instanceof Error ? err.message : String(err)}`,
+        ? df(d.bridgeHttpFailed, { port: settings.httpPort, error: message })
+        : df(d.bridgeFailed, { error: message }),
     );
     app.quit();
     return;

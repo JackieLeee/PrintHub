@@ -45,6 +45,18 @@ contextBridge.exposeInMainWorld("printhubDesktop", {
     }>,
   clearSimEvents: () =>
     ipcRenderer.invoke("desktop:clear-sim-events") as Promise<{ ok: boolean }>,
+  getUiLocale: () => ipcRenderer.invoke("desktop:get-ui-locale") as Promise<"en" | "zh">,
+  setUiLocale: (locale: "en" | "zh") =>
+    ipcRenderer.invoke("desktop:set-ui-locale", locale) as Promise<"en" | "zh">,
+  onUiLocaleChanged: (callback: (locale: "en" | "zh") => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, locale: "en" | "zh") => {
+      callback(locale);
+    };
+    ipcRenderer.on("desktop:ui-locale-changed", handler);
+    return () => {
+      ipcRenderer.removeListener("desktop:ui-locale-changed", handler);
+    };
+  },
   getLanUrl: () => ipcRenderer.invoke("desktop:get-lan-url") as Promise<string | null>,
   setLanHttpEnabled: (enabled: boolean) =>
     ipcRenderer.invoke("desktop:set-lan-http-enabled", enabled) as Promise<DesktopSettingsView>,

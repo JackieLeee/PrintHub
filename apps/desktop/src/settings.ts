@@ -2,6 +2,7 @@ import { app } from "electron";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { DEFAULT_HTTP_PORT } from "@virt-printer/shared";
+import { normalizeUiLocale } from "./i18n/index.js";
 
 export type TrayIconVariant = "a" | "b" | "c" | "d";
 
@@ -16,6 +17,8 @@ export interface DesktopSettings {
   trayIconVariant?: TrayIconVariant;
   /** Stable localhost port for the embedded UI server (localStorage origin). */
   uiServerPort?: number;
+  /** Web UI / tray menu language. */
+  uiLocale?: "en" | "zh";
 }
 
 const DEFAULTS: DesktopSettings = {
@@ -65,6 +68,7 @@ export function loadSettings(): DesktopSettings {
       menuBarHintDismissed: Boolean(raw.menuBarHintDismissed),
       trayIconVariant: normalizeTrayIconVariant(raw.trayIconVariant),
       uiServerPort: normalizeUiServerPort(raw.uiServerPort),
+      uiLocale: normalizeUiLocale(raw.uiLocale),
     };
   } catch {
     return { ...DEFAULTS };

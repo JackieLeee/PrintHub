@@ -13,83 +13,68 @@
 
 Cash registers, POS apps, and label printers usually send **raw ESC/POS or TSPL** over TCP — not PDF or images. Without a physical printer, it is hard to tell whether the bytes are correct.
 
-**PrintHub** acts as a **LAN virtual printer**: it accepts the same payloads as real hardware and shows them in a browser — live preview, history, samples, and raw debug submit.
+**PrintHub** is a **LAN virtual printer**: it accepts the same payloads as real hardware and shows them in a browser — live preview, history, samples, and raw debug submit.
 
 ## What it does
 
 | Capability | Description |
 |------------|-------------|
 | **Receive** | ESC/POS receipts and TSPL labels on TCP **9100** |
-| **Preview** | Canvas receipt/label preview — ESC/POS (text, images, Code128, QR, invert, cash-drawer markers) and TSPL labels |
-| **History** | Recent jobs stored in the browser (last **50**); replay and export (file / hex / Base64); total count in sidebar |
-| **Debug** | One-click ESC/POS & TSPL samples; File / Hex / Base64 raw submit — **works offline** (local preview without Bridge); two-step clear, tab-switch confirm, file drop zone |
-| **Workbench** | Collapsible **workbench**: virtual printer (left, always visible) + **Network & ports** / **Debug print** tabs (right); header shows scenario, Bridge status, IP, connection count |
-| **Command reference** | Inline ESC/POS & TSPL manuals in debug print (left chevron, embedded categories) |
-| **Themes & i18n** | 10 UI themes with **English / 中文** labels; header popover switchers; **persisted** (localStorage; desktop also reuses a stable UI server port) |
-| **Printer sim** | Scenario simulation (normal, paper-out, cover-open, **offline = reject TCP**, slow, reject-job), DLE EOT status bytes, cash-drawer kick detection, live event log (last **50**, clearable) |
-| **Desktop app** | Electron app with Bridge built-in, menu-bar tray, optional LAN HTTP/WebSocket |
-| **mDNS** | Advertises `_pdl-datastream._tcp` on port **9100** for POS / macOS printer discovery |
+| **Preview** | Canvas receipt/label preview (ESC/POS + TSPL) |
+| **History** | Last **50** jobs in the browser; replay and export |
+| **Debug** | ESC/POS & TSPL samples; File / Hex / Base64 submit — **works offline** without Bridge |
+| **Workbench** | Virtual printer + **Network & ports** / **Debug print** tabs |
+| **Themes & i18n** | 10 UI themes; **English / 中文**; persisted (`settings.json` on desktop) |
+| **Printer sim** | Scenario simulation, DLE EOT status, cash-drawer kick, event log |
+| **Desktop app** | Electron with Bridge built-in, menu-bar tray, optional LAN HTTP |
+| **mDNS** | `_pdl-datastream._tcp` on port **9100** for printer discovery |
 
 | Port | Role |
 |------|------|
-| **9100** | TCP — print data from POS or test tools (always on) |
-| **8081** | HTTP + WebSocket + embedded Web UI (optional in desktop; always on in CLI mode) |
+| **9100** | TCP — print data (always on) |
+| **8081** | HTTP + WebSocket + Web UI (optional in desktop; always on in CLI) |
 
 ### Desktop app (macOS)
 
-Bridge runs inside the Electron app. TCP **9100** is always available; LAN HTTP is **off by default** and can be enabled from the menu-bar tray.
+Bridge runs inside the Electron app. TCP **9100** is always available; LAN HTTP is **off by default** and can be enabled from the tray.
 
-**v1.0.0** ships **macOS arm64** (`.dmg`) only — Windows builds are planned for a later release. Download from [Releases](https://github.com/JackieLeee/PrintHub/releases).
+**v1.0.0** ships **macOS arm64** (`.dmg`) only — [Releases](https://github.com/JackieLeee/PrintHub/releases).
 
 ```bash
 pnpm install
-pnpm dev:desktop    # build & launch PrintHub.app (macOS)
+pnpm dev:desktop    # build & launch PrintHub.app
 pnpm dist:desktop   # build macOS .dmg (arm64)
 ```
 
-Tray menu: Bridge / TCP / LAN status, copy LAN URL, HTTP port, restart Bridge, quit.
+Tray menu: status (Bridge / TCP / mDNS / LAN), copy LAN URL, HTTP port, **Language** (EN / 中文), restart Bridge, quit. Theme and language sync between the Web UI and tray (`settings.json` + localStorage).
 
-Theme and language choices are remembered across sessions. The embedded UI server binds to a **stable localhost port** stored in `settings.json` so browser storage survives restarts.
+On **macOS**, tray rows use label prefixes — **🟢 / 🟡 / 🔴** for status, **🌐** for Language — because Electron tray menus ignore custom icons. Windows/Linux use SVG menu icons.
+
+| Workbench | Preview & history | Debug print |
+|:---:|:---:|:---:|
+| ![Workbench](./docs/assets/desktop-workbench.png) | ![Preview and history](./docs/assets/desktop-preview-history.png) | ![Debug print TSPL](./docs/assets/desktop-debug-tspl.png) |
 
 ### Web demo (GitHub Pages)
 
-The UI is deployed to GitHub Pages on every push to `main` — useful for exploring layout, themes, and **offline** debug preview (File / Hex / Base64). TCP print, printer simulation, and LAN features require a local Bridge or the desktop app.
+UI only — good for themes and **offline** debug preview. TCP print and sim need a local Bridge or desktop app.
 
 **Live demo:** https://jackieleee.github.io/PrintHub/
 
 ### Printer simulation
 
-The **workbench** (expand from the header bar) keeps the **virtual printer** on the left and switches the right panel between **Network & ports** and **Debug print**:
-
 | Scenario | Behavior |
 |----------|----------|
-| **Normal** | Standard DLE EOT status responses |
-| **Paper out** | Paper-out status bits on polls; TCP stays connected |
+| **Normal** | Standard DLE EOT responses |
+| **Paper out** | Paper-out status bits; TCP stays connected |
 | **Cover open** | Cover-open status bit; TCP stays connected |
-| **Offline** | **Rejects new TCP connections** (connection refused); existing sessions dropped when switched |
-| **Slow** | Configurable status response delay |
-| **Reject job** | Drops incoming TCP print jobs |
-
-- **Traffic-light indicators** — green / yellow / red for scenario and cash-drawer state
-- **Cash drawer** — compact pull-out UI; manual open/close; `ESC p` kicks from print jobs are detected and logged
-- **Sim events** — WebSocket `sim.event` stream; newest first, deduplicated; human-readable durations; **Clear** button
-- **Print history** — sidebar **Clear** with confirmation; clears IndexedDB + in-memory list
-
-**Sim HTTP API** (Bridge must be running):
+| **Offline** | Rejects new TCP connections |
+| **Slow** | Configurable status delay |
+| **Reject job** | Drops incoming print jobs |
 
 ```bash
-# Read / update sim config
 curl http://localhost:8081/sim/config
 curl -X POST http://localhost:8081/sim/config \
-  -H "Content-Type: application/json" \
-  -d '{"scenario":"paper-out"}'
-
-# Manual cash-drawer kick (UI uses this too)
-curl -X POST http://localhost:8081/sim/drawer/kick \
-  -H "Content-Type: application/json" \
-  -d '{"pin":0}'
-
-# Clear sim event log
+  -H "Content-Type: application/json" -d '{"scenario":"paper-out"}'
 curl -X POST http://localhost:8081/sim/events/clear
 ```
 
@@ -99,18 +84,13 @@ curl -X POST http://localhost:8081/sim/events/clear
 
 ```bash
 pnpm install
-pnpm dev      # build Web UI + start Bridge
-pnpm build:web   # production Web UI (shared + tspl + web; used by CI / GitHub Pages)
-# or: pnpm start   (build + run, no watch)
+pnpm dev          # build Web UI + start Bridge
+pnpm build:web    # production Web UI (CI / GitHub Pages)
 ```
 
-1. Open **http://localhost:8081** (or your machine’s LAN IP).
-2. Point the POS / app at **`<host>:9100`**.
-3. Expand the **workbench** — virtual printer on the left; use **Network & ports** or **Debug print** on the right.
-4. In **Debug print**, try samples, raw submit, inline command reference, or change sim scenarios.
-5. Debug preview works **without Bridge**; TCP scenarios and sim config require Bridge on `:8081`.
-
-> **LAN access:** Other devices on the same network should use `http://<bridge-host>:8081`, not `localhost`.
+1. Open **http://localhost:8081** (or your LAN IP).
+2. Point POS / apps at **`<host>:9100`**.
+3. Use the **workbench** for network info, debug print, and sim scenarios.
 
 **TCP smoke test:**
 
@@ -130,17 +110,13 @@ curl -X POST http://localhost:8081/print/raw \
 
 ![PrintHub architecture](./docs/assets/architecture.en.png)
 
-**Monorepo layout**
-
-- `apps/desktop` — Electron desktop app (integrated Bridge, tray, optional LAN HTTP)
+- `apps/desktop` — Electron (Bridge, tray, optional LAN HTTP)
 - `apps/web` — React dashboard
-- `packages/bridge` — TCP listener, HTTP API, WebSocket relay, printer sim, mDNS, static UI
-- `packages/escpos`, `packages/tspl`, `packages/renderer` — parse and render (ESC/POS inspector parser, TSPL label meta, Code128/QR canvas drawing)
-- `packages/shared`, `packages/relay-client` — types and WS client
+- `packages/bridge` — TCP, HTTP API, WebSocket, sim, mDNS
+- `packages/escpos`, `packages/tspl`, `packages/renderer` — parse & render
+- `packages/shared`, `packages/relay-client` — types & WS client
 
-**CLI mode:** `pnpm dev` / `pnpm start` builds and serves `apps/web/dist` on port **8081** in one Bridge process.
-
-**Desktop mode:** Bridge runs in the Electron main process; the UI uses IPC. Optional LAN HTTP serves the same web UI to other devices.
+**CLI:** `pnpm dev` serves `apps/web/dist` on **8081**. **Desktop:** Bridge in Electron main process; UI via IPC.
 
 ## Star History
 
