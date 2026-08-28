@@ -23,7 +23,8 @@ Cash registers, POS apps, and label printers usually send **raw ESC/POS or TSPL*
 | **Preview** | Canvas receipt/label preview — ESC/POS (text, images, Code128, QR, invert, cash-drawer markers) and TSPL labels |
 | **History** | Recent jobs stored in the browser (last **50**); replay and export (file / hex / Base64); total count in sidebar |
 | **Debug** | One-click ESC/POS & TSPL samples; File / Hex / Base64 raw submit — **works offline** (local preview without Bridge) |
-| **Command reference** | Collapsible ESC/POS & TSPL command manuals in the debug panel |
+| **Command reference** | Collapsible ESC/POS & TSPL command manuals in the debug panel (chevron expand/collapse) |
+| **Themes & i18n** | 10 UI themes with **English / 中文** labels; language switcher in the header toolbar |
 | **Printer sim** | Scenario simulation (normal, paper-out, cover-open, offline, slow, reject-job), DLE EOT status bytes, cash-drawer kick detection, live event log (last **50**) |
 | **Desktop app** | Electron app with Bridge built-in, menu-bar tray, optional LAN HTTP/WebSocket |
 | **mDNS** | Advertises `_pdl-datastream._tcp` on port **9100** for POS / macOS printer discovery |
@@ -37,13 +38,21 @@ Cash registers, POS apps, and label printers usually send **raw ESC/POS or TSPL*
 
 Bridge runs inside the Electron app. TCP **9100** is always available; LAN HTTP is **off by default** and can be enabled from the menu-bar tray.
 
+**v1.0.0** ships **macOS arm64** (`.dmg`) only — Windows builds are planned for a later release. Download from [Releases](https://github.com/JackieLeee/PrintHub/releases).
+
 ```bash
 pnpm install
 pnpm dev:desktop    # build & launch PrintHub.app (macOS)
-pnpm dist:desktop   # build .dmg
+pnpm dist:desktop   # build macOS .dmg (arm64)
 ```
 
 Tray menu: Bridge / TCP / LAN status, copy LAN URL, HTTP port, restart Bridge, quit.
+
+### Web demo (GitHub Pages)
+
+The UI is deployed to GitHub Pages on every push to `main` — useful for exploring layout, themes, and **offline** debug preview (File / Hex / Base64). TCP print, printer simulation, and LAN features require a local Bridge or the desktop app.
+
+**Live demo:** https://jackieleee.github.io/PrintHub/
 
 ### Printer simulation
 
@@ -84,6 +93,7 @@ curl -X POST http://localhost:8081/sim/drawer/kick \
 ```bash
 pnpm install
 pnpm dev      # build Web UI + start Bridge
+pnpm build:web   # production Web UI (shared + tspl + web; used by CI / GitHub Pages)
 # or: pnpm start   (build + run, no watch)
 ```
 

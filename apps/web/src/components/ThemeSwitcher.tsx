@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocale } from "../i18n/context.js";
+import { HeaderToolbarSelect } from "./HeaderToolbarSelect.js";
 import {
   applyUiTheme,
   loadUiThemeId,
@@ -44,22 +45,38 @@ export function ThemeSwitcher({ compact = false }: { compact?: boolean }) {
       title={t.theme.label}
     >
       <PaletteIcon />
-      <select
-        className={`lang-select${compact ? " header-toolbar-select" : ""}`}
-        value={themeId}
-        aria-label={t.theme.label}
-        onChange={(e) => {
-          const next = e.target.value as UiThemeId;
-          setThemeId(next);
-          saveUiThemeId(next);
-        }}
-      >
-        {UI_THEMES.map((theme) => (
-          <option key={theme.id} value={theme.id}>
-            {theme.name}
-          </option>
-        ))}
-      </select>
+      {compact ? (
+        <HeaderToolbarSelect
+          value={themeId}
+          ariaLabel={t.theme.label}
+          options={UI_THEMES.map((theme) => ({
+            value: theme.id,
+            label: t.theme.names[theme.id],
+          }))}
+          onChange={(next) => {
+            const id = next as UiThemeId;
+            setThemeId(id);
+            saveUiThemeId(id);
+          }}
+        />
+      ) : (
+        <select
+          className="lang-select"
+          value={themeId}
+          aria-label={t.theme.label}
+          onChange={(e) => {
+            const next = e.target.value as UiThemeId;
+            setThemeId(next);
+            saveUiThemeId(next);
+          }}
+        >
+          {UI_THEMES.map((theme) => (
+            <option key={theme.id} value={theme.id}>
+              {t.theme.names[theme.id]}
+            </option>
+          ))}
+        </select>
+      )}
     </label>
   );
 }

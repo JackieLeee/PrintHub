@@ -7,7 +7,7 @@
     "dev:bridge": "pnpm --filter @virt-printer/bridge dev",
     "dev:web": "pnpm --filter @virt-printer/web dev",
     "dev:desktop": "pnpm build:web:desktop && pnpm --filter @virt-printer/shared build && pnpm --filter @virt-printer/tspl build && pnpm --filter @virt-printer/bridge build && pnpm --filter @virt-printer/desktop dev",
-    "build:web": "pnpm --filter @virt-printer/web build",
+    "build:web": "pnpm --filter @virt-printer/shared build && pnpm --filter @virt-printer/tspl build && pnpm --filter @virt-printer/web build",
     "build:web:desktop": "pnpm --filter @virt-printer/web build:desktop",
     "build:desktop": "pnpm build:web:desktop && pnpm --filter @virt-printer/shared build && pnpm --filter @virt-printer/tspl build && pnpm --filter @virt-printer/bridge build && pnpm --filter @virt-printer/desktop build",
     "dist:desktop": "pnpm build:web:desktop && pnpm --filter @virt-printer/shared build && pnpm --filter @virt-printer/tspl build && pnpm --filter @virt-printer/bridge build && pnpm --filter @virt-printer/desktop dist",

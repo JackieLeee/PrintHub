@@ -26,7 +26,6 @@ export interface UiThemeTokens {
 
 export interface UiTheme {
   id: UiThemeId;
-  name: string;
   tokens: UiThemeTokens;
 }
 
@@ -49,7 +48,6 @@ export const LEGACY_THEME_ID_MAP: Record<string, UiThemeId> = {
 export const UI_THEMES: UiTheme[] = [
   {
     id: "deep-ink",
-    name: "深墨",
     tokens: {
       bg: "#0f1117",
       surface: "#171a22",
@@ -66,7 +64,6 @@ export const UI_THEMES: UiTheme[] = [
   },
   {
     id: "violet-night",
-    name: "紫夜",
     tokens: {
       bg: "#0b0b0f",
       surface: "#13131a",
@@ -83,7 +80,6 @@ export const UI_THEMES: UiTheme[] = [
   },
   {
     id: "carbon-black",
-    name: "碳黑",
     tokens: {
       bg: "#000000",
       surface: "#0a0a0a",
@@ -100,7 +96,6 @@ export const UI_THEMES: UiTheme[] = [
   },
   {
     id: "forest-green",
-    name: "森绿",
     tokens: {
       bg: "#0c0f0e",
       surface: "#121816",
@@ -117,7 +112,6 @@ export const UI_THEMES: UiTheme[] = [
   },
   {
     id: "warm-rose",
-    name: "暖玫",
     tokens: {
       bg: "#1a1a1c",
       surface: "#212124",
@@ -134,7 +128,6 @@ export const UI_THEMES: UiTheme[] = [
   },
   {
     id: "plain-paper",
-    name: "素纸",
     tokens: {
       bg: "#191919",
       surface: "#202020",
@@ -151,7 +144,6 @@ export const UI_THEMES: UiTheme[] = [
   },
   {
     id: "deep-ocean",
-    name: "深海",
     tokens: {
       bg: "#0a2540",
       surface: "#0f3058",
@@ -168,7 +160,6 @@ export const UI_THEMES: UiTheme[] = [
   },
   {
     id: "steel-blue",
-    name: "钢蓝",
     tokens: {
       bg: "#161616",
       surface: "#1c1c1c",
@@ -185,7 +176,6 @@ export const UI_THEMES: UiTheme[] = [
   },
   {
     id: "amber-glow",
-    name: "琥珀",
     tokens: {
       bg: "#14110e",
       surface: "#1c1814",
@@ -202,7 +192,6 @@ export const UI_THEMES: UiTheme[] = [
   },
   {
     id: "celadon",
-    name: "青瓷",
     tokens: {
       bg: "#0e1211",
       surface: "#151a19",

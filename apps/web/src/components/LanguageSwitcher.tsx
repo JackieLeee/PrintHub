@@ -1,5 +1,6 @@
 import { useLocale } from "../i18n/context.js";
 import type { Locale } from "../i18n/types.js";
+import { HeaderToolbarSelect } from "./HeaderToolbarSelect.js";
 
 const LOCALE_FLAGS: Record<Locale, string> = {
   en: "🇺🇸",
@@ -41,15 +42,27 @@ export function LanguageSwitcher({ compact = false }: { compact?: boolean }) {
       title={t.lang.label}
     >
       <GlobeIcon />
-      <select
-        className={`lang-select${compact ? " header-toolbar-select" : ""}`}
-        value={locale}
-        aria-label={t.lang.label}
-        onChange={(e) => setLocale(e.target.value as Locale)}
-      >
-        <option value="en">{compact ? LOCALE_LABELS.en : `${LOCALE_FLAGS.en} ${t.lang.en}`}</option>
-        <option value="zh">{compact ? LOCALE_LABELS.zh : `${LOCALE_FLAGS.zh} ${t.lang.zh}`}</option>
-      </select>
+      {compact ? (
+        <HeaderToolbarSelect
+          value={locale}
+          ariaLabel={t.lang.label}
+          options={[
+            { value: "en", label: LOCALE_LABELS.en },
+            { value: "zh", label: LOCALE_LABELS.zh },
+          ]}
+          onChange={(next) => setLocale(next as Locale)}
+        />
+      ) : (
+        <select
+          className="lang-select"
+          value={locale}
+          aria-label={t.lang.label}
+          onChange={(e) => setLocale(e.target.value as Locale)}
+        >
+          <option value="en">{`${LOCALE_FLAGS.en} ${t.lang.en}`}</option>
+          <option value="zh">{`${LOCALE_FLAGS.zh} ${t.lang.zh}`}</option>
+        </select>
+      )}
     </label>
   );
 }

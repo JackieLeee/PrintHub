@@ -23,7 +23,8 @@
 | **预览** | Canvas 小票/标签预览 — ESC/POS（文本、位图、Code128、QR、反白、钱箱标记）与 TSPL 标签 |
 | **历史** | 浏览器本地保存最近 **50** 条任务，支持回放与导出（File / Hex / Base64）；侧栏显示总数 |
 | **调试** | 一键 ESC/POS & TSPL Sample；File / Hex / Base64 原始提交 — **可离线**（无需 Bridge 本地预览） |
-| **命令手册** | 调试面板内可折叠的 ESC/POS & TSPL 命令参考 |
+| **命令手册** | 调试面板内可折叠的 ESC/POS & TSPL 命令参考（带展开箭头） |
+| **主题与语言** | 10 套 UI 主题，名称支持 **中文 / English**；右上角工具栏可切换语言 |
 | **打印机模拟** | 场景模拟（正常、缺纸、开盖、离线、慢响应、拒打）、DLE EOT 状态字节、钱箱脉冲检测、实时事件日志（最近 **50** 条） |
 | **桌面应用** | Electron 集成 Bridge、菜单栏托盘、可选局域网 HTTP/WebSocket |
 | **mDNS** | 广播 `_pdl-datastream._tcp` · 端口 **9100**，便于 POS / macOS 自动发现打印机 |
@@ -37,13 +38,21 @@
 
 Bridge 内置于 Electron 主进程。TCP **9100** 始终可用；局域网 HTTP **默认关闭**，可在菜单栏托盘中开启。
 
+**v1.0.0** 目前仅提供 **macOS arm64**（`.dmg`），Windows 版本后续发布。安装包见 [Releases](https://github.com/JackieLeee/PrintHub/releases)。
+
 ```bash
 pnpm install
 pnpm dev:desktop    # 构建并启动 PrintHub.app（macOS）
-pnpm dist:desktop   # 打包 .dmg
+pnpm dist:desktop   # 打包 macOS .dmg（arm64）
 ```
 
 托盘菜单：Bridge / TCP / 局域网状态、复制局域网地址、HTTP 端口、重启 Bridge、退出。
+
+### Web 演示（GitHub Pages）
+
+每次推送到 `main` 会自动部署 GitHub Pages，可用于浏览界面、切换主题，以及 **离线** 调试预览（File / Hex / Base64）。TCP 打印、打印机模拟与局域网功能仍需本地 Bridge 或桌面应用。
+
+**在线演示：** https://jackieleee.github.io/PrintHub/
 
 ### 打印机模拟
 
@@ -84,6 +93,7 @@ curl -X POST http://localhost:8081/sim/drawer/kick \
 ```bash
 pnpm install
 pnpm dev      # 构建 Web UI 并启动 Bridge
+pnpm build:web   # 生产环境 Web UI（shared + tspl + web；CI / GitHub Pages 使用）
 # 或：pnpm start  （构建后运行，无 watch）
 ```
 

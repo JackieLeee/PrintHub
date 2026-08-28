@@ -2,7 +2,21 @@ import type { Translations } from "../types.js";
 
 export const en: Translations = {
   lang: { label: "Language", zh: "中文", en: "English" },
-  theme: { label: "Theme" },
+  theme: {
+    label: "Theme",
+    names: {
+      "deep-ink": "Deep Ink",
+      "violet-night": "Violet Night",
+      "carbon-black": "Carbon Black",
+      "forest-green": "Forest Green",
+      "warm-rose": "Warm Rose",
+      "plain-paper": "Plain Paper",
+      "deep-ocean": "Deep Ocean",
+      "steel-blue": "Steel Blue",
+      "amber-glow": "Amber Glow",
+      celadon: "Celadon",
+    },
+  },
   toolbelt: { network: "Network & ports", debug: "Debug print" },
   app: {
     title: "PrintHub",

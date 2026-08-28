@@ -28,10 +28,31 @@ const sizes = [
   ["icon_512x512@2x.png", 1024],
 ];
 
+const CANVAS = 1024;
+/** macOS squircle icons look oversized when artwork fills the full canvas — inset ~18%. */
+const ARTWORK_RATIO = 0.82;
+
+async function renderPaddedIcon(size) {
+  const artwork = Math.round(size * ARTWORK_RATIO);
+  const offset = Math.round((size - artwork) / 2);
+  const layer = await sharp(svg).resize(artwork, artwork).png().toBuffer();
+  return sharp({
+    create: {
+      width: size,
+      height: size,
+      channels: 4,
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
+    },
+  })
+    .composite([{ input: layer, left: offset, top: offset }])
+    .png()
+    .toBuffer();
+}
+
 const svg = readFileSync(svgPath);
 mkdirSync(assetsDir, { recursive: true });
 
-await sharp(svg).resize(1024, 1024).png().toFile(pngPath);
+await renderPaddedIcon(CANVAS).then((buf) => writeFileSync(pngPath, buf));
 console.log("[icon] wrote", pngPath);
 
 rmSync(iconsetDir, { recursive: true, force: true });
@@ -39,7 +60,8 @@ mkdirSync(iconsetDir, { recursive: true });
 
 for (const [name, size] of sizes) {
   const out = join(iconsetDir, name);
-  await sharp(svg).resize(size, size).png().toFile(out);
+  const buf = await renderPaddedIcon(size);
+  writeFileSync(out, buf);
 }
 
 if (process.platform === "darwin") {

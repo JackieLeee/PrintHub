@@ -12,9 +12,8 @@
     "dev:raw": "pnpm build && electron .",
     "start": "pnpm build && node scripts/run-dev.mjs",
     "pack": "pnpm icons && pnpm build && electron-builder --dir",
-    "dist": "pnpm icons && pnpm build && electron-builder --mac dmg --win nsis",
-    "dist:mac": "pnpm icons && pnpm build && electron-builder --mac dmg",
-    "dist:win": "pnpm icons && pnpm build && electron-builder --win nsis"
+    "dist": "pnpm icons && pnpm build && electron-builder --mac dmg --arm64",
+    "dist:mac": "pnpm icons && pnpm build && electron-builder --mac dmg --arm64"
   },
   "dependencies": {
     "@virt-printer/bridge": "workspace:*",

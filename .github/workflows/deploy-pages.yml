@@ -30,7 +30,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Build web
-        run: pnpm --filter @virt-printer/web build
+        run: pnpm build:web
         env:
           GITHUB_ACTIONS: true
           VITE_REPO_NAME: ${{ github.event.repository.name }}

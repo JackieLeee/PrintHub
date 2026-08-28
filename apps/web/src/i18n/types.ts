@@ -1,8 +1,10 @@
+import type { UiThemeId } from "../lib/ui-themes.js";
+
 export type Locale = "zh" | "en";
 
 export interface Translations {
   lang: { label: string; zh: string; en: string };
-  theme: { label: string };
+  theme: { label: string; names: Record<UiThemeId, string> };
   toolbelt: {
     network: string;
     debug: string;
