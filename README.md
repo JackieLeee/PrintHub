@@ -38,13 +38,15 @@ Cash registers, POS apps, and label printers usually send **raw ESC/POS or TSPL*
 
 Bridge runs inside the Electron app. TCP **9100** is always available; LAN HTTP is **off by default** and can be enabled from the tray.
 
-**v1.0.0** ships **macOS arm64** (`.dmg`) only — [Releases](https://github.com/JackieLeee/PrintHub/releases).
+Download the latest **macOS universal** `.dmg` (Apple Silicon + Intel) from [Releases](https://github.com/JackieLeee/PrintHub/releases).
 
 ```bash
 pnpm install
 pnpm dev:desktop    # build & launch PrintHub.app
-pnpm dist:desktop   # build macOS .dmg (arm64)
+pnpm dist:desktop   # build macOS universal .dmg
 ```
+
+> **Not code-signed.** Release builds are **unsigned** (no Apple Developer ID). macOS Gatekeeper may block the first launch. **Right-click PrintHub → Open**, or allow it under **System Settings → Privacy & Security**. This is expected for open-source builds without a paid signing certificate.
 
 Tray menu: status (Bridge / TCP / mDNS / LAN), copy LAN URL, HTTP port, **Language** (EN / 中文), restart Bridge, quit. Theme and language sync between the Web UI and tray (`settings.json` + localStorage).
 

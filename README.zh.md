@@ -38,13 +38,15 @@
 
 Bridge 内置于 Electron。TCP **9100** 始终可用；局域网 HTTP **默认关闭**，可在托盘中开启。
 
-**v1.0.0** 目前仅提供 **macOS arm64**（`.dmg`）— [Releases](https://github.com/JackieLeee/PrintHub/releases)。
+安装包见 [Releases](https://github.com/JackieLeee/PrintHub/releases)（**macOS universal** `.dmg`，Apple 芯片 + Intel 通用）。
 
 ```bash
 pnpm install
 pnpm dev:desktop    # 构建并启动 PrintHub.app
-pnpm dist:desktop   # 打包 macOS .dmg（arm64）
+pnpm dist:desktop   # 打包 macOS universal .dmg
 ```
+
+> **未签名说明：** 发布版 **未做 Apple 代码签名**（无 Developer ID）。首次打开时 macOS 可能拦截。请 **右键 PrintHub → 打开**，或在 **系统设置 → 隐私与安全性** 中允许运行。开源项目未购买签名证书时属于正常现象。
 
 托盘菜单：状态（Bridge / TCP / mDNS / 局域网）、复制局域网地址、HTTP 端口、**语言**（EN / 中文）、重启 Bridge、退出。主题与语言在 Web 控制台与托盘间双向同步（`settings.json` + localStorage）。
 
