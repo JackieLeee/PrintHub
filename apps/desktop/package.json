@@ -55,6 +55,7 @@
       "target": ["dmg"],
       "icon": "icon.icns",
       "identity": null,
+      "x64ArchFiles": "**/node_modules/@img/**",
       "extendInfo": {
         "CFBundleName": "PrintHub",
         "CFBundleDisplayName": "PrintHub"
