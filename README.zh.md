@@ -6,145 +6,71 @@
 [![Release](https://img.shields.io/github/v/release/JackieLeee/PrintHub?label=release)](https://github.com/JackieLeee/PrintHub/releases)
 [![Node.js](https://img.shields.io/badge/Node.js-20%2B-green?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![pnpm](https://img.shields.io/badge/pnpm-9%2B-F69220?logo=pnpm&logoColor=white)](https://pnpm.io/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev/)
 
-## 背景
-
-收银机、POS 和标签机通常通过 TCP 发送 **原始 ESC/POS 或 TSPL 字节流**，而不是 PDF。没有实体打印机时，很难确认发出的数据是否正确。
-
-**PrintHub** 是一个 **局域网虚拟打印机**：接收与真实设备相同的数据，在浏览器中实时预览、查看历史，并支持 Sample 与 Raw 调试打印。
+局域网 **虚拟打印机**，接收 **ESC/POS** 小票与 **TSPL** 标签原始字节流 — 浏览器实时预览、历史回放与调试，无需实体打印机。
 
 ## 功能
 
-| 能力 | 说明 |
+| | |
+|---|---|
+| **预览** | ESC/POS & TSPL Canvas 渲染；最近 **50** 条任务，支持导出 |
+| **调试** | Sample + File / Hex / Base64 — **可离线**，无需 Bridge |
+| **工作台** | 虚拟打印机 · 网络与端口 · 调试打印 · 打印机模拟 |
+| **桌面端** | Electron 集成 Bridge、托盘、中/EN、可选局域网 HTTP |
+| **发现** | mDNS `_pdl-datastream._tcp` · 端口 **9100** |
+
+**端口：** TCP **9100**（打印，始终开启）· HTTP **8081**（Web 控制台；CLI 常开，桌面端可选）
+
+## 下载
+
+[Releases](https://github.com/JackieLeee/PrintHub/releases) · [在线演示](https://jackieleee.github.io/PrintHub/)（仅 UI，无 TCP）
+
+| 平台 | 文件 |
 |------|------|
-| **接收** | TCP **9100** 接收 ESC/POS 小票与 TSPL 标签 |
-| **预览** | Canvas 小票/标签预览（ESC/POS + TSPL） |
-| **历史** | 浏览器本地保存最近 **50** 条任务，支持回放与导出 |
-| **调试** | ESC/POS & TSPL Sample；File / Hex / Base64 提交 — **可离线**，无需 Bridge |
-| **工作台** | 虚拟打印机 + **网络与端口** / **调试打印** Tab |
-| **主题与语言** | 10 套 UI 主题；**中文 / English**；桌面端持久化（`settings.json`） |
-| **打印机模拟** | 场景模拟、DLE EOT 状态、钱箱脉冲、事件日志 |
-| **桌面应用** | Electron 集成 Bridge、菜单栏托盘、可选局域网 HTTP |
-| **mDNS** | 广播 `_pdl-datastream._tcp` · 端口 **9100** |
+| macOS（Apple 芯片） | `*-arm64.dmg` ~110 MB |
+| macOS（Apple 芯片 + Intel） | `*-universal.dmg` ~200 MB |
+| Windows x64 | `PrintHub Setup *.exe` ~99 MB |
 
-| 端口 | 用途 |
-|------|------|
-| **9100** | TCP — 打印数据（始终开启） |
-| **8081** | HTTP + WebSocket + Web 控制台（桌面端默认关闭；CLI 始终开启） |
+> **未签名。** macOS：**右键 → 打开**。Windows：**更多信息 → 仍要运行**。
 
-### 桌面应用（macOS 与 Windows）
+## 快速开始
 
-Bridge 内置于 Electron。TCP **9100** 始终可用；局域网 HTTP **默认关闭**，可在托盘中开启。
-
-安装包见 [Releases](https://github.com/JackieLeee/PrintHub/releases)：
-
-| 平台 | 安装包 |
-|------|--------|
-| **macOS** | `*-arm64.dmg`（~110 MB，Apple 芯片）· `*-universal.dmg`（~200 MB，Apple 芯片 + Intel） |
-| **Windows** | `*.exe` NSIS 安装程序（x64） |
+**Node.js 20+ · pnpm 9+**
 
 ```bash
 pnpm install
-pnpm dev:desktop       # 构建并启动（macOS / Windows / Linux）
-pnpm dist:desktop      # 打包 macOS arm64 + universal .dmg（需在 macOS 上执行）
-pnpm dist:desktop:win  # 打包 Windows NSIS .exe（需在 Windows 上执行）
+pnpm dev          # CLI：Web 控制台 + Bridge :8081
+pnpm dev:desktop  # Electron 桌面端
 ```
 
-**Windows 外壳：** 无边框窗口 + 左侧 **macOS 风格交通灯**（红 / 黄 / 绿）、一体化顶栏、滚动时显示的 overlay 滚动条、深色任务栏上的浅色托盘图标。
-
-**macOS 外壳：** 系统原生菜单栏托盘与窗口控件。
-
-> **Windows / 首次安装：** `pnpm install` 会尝试下载 Electron（约 100MB）；若 GitHub 不通会自动重试 npmmirror。仍失败时执行 `pnpm --filter @virt-printer/desktop run install:electron`，或设置 `ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/` 后重试。
-
-> **未签名说明：** 发布版 **未做代码签名**（无 Apple Developer ID / Windows Authenticode）。macOS 首次打开可能被拦截 — 请 **右键 PrintHub → 打开**，或在 **系统设置 → 隐私与安全性** 中允许。Windows SmartScreen 可能提示 — 选择 **更多信息 → 仍要运行**。
-
-托盘菜单：状态（Bridge / TCP / mDNS / 局域网）、复制局域网地址、HTTP 端口、**语言**（EN / 中文）、重启 Bridge、退出。主题与语言在 Web 控制台与托盘间双向同步（`settings.json` + localStorage）。
-
-**macOS** 与 **Windows** 托盘行使用 label 前缀 — 状态 **🟢 / 🟡 / 🔴**，操作 **▣ / ⛓ / 🌐** 等 — 因 Electron 托盘菜单无法可靠渲染自定义图标。**Linux** 使用 SVG 菜单图标。
-
-| 工作台 | 预览与历史 | 调试打印 |
-|:---:|:---:|:---:|
-| ![工作台](./docs/assets/desktop-workbench.png) | ![预览与历史](./docs/assets/desktop-preview-history.png) | ![调试打印 TSPL](./docs/assets/desktop-debug-tspl.png) |
-
-### Web 演示（GitHub Pages）
-
-仅 UI 演示 — 可浏览主题与 **离线** 调试预览。TCP 打印与模拟需本地 Bridge 或桌面应用。
-
-**在线演示：** https://jackieleee.github.io/PrintHub/
-
-### 打印机模拟
-
-| 场景 | 行为 |
-|------|----------|
-| **正常** | 标准 DLE EOT 响应 |
-| **缺纸** | 缺纸状态位；TCP 保持连接 |
-| **开盖** | 开盖状态位；TCP 保持连接 |
-| **离线** | 拒绝新 TCP 连接 |
-| **慢响应** | 可配置状态延迟 |
-| **拒打** | 丢弃传入打印任务 |
+1. 打开 **http://localhost:8081**（局域网：`http://<主机IP>:8081`）
+2. POS 指向 **`<主机IP>:9100`**
 
 ```bash
-curl http://localhost:8081/sim/config
-curl -X POST http://localhost:8081/sim/config \
-  -H "Content-Type: application/json" -d '{"scenario":"paper-out"}'
-curl -X POST http://localhost:8081/sim/events/clear
-```
-
-## 使用方法
-
-**环境：** Node.js 20+、pnpm 9+
-
-```bash
-pnpm install
-pnpm dev          # 构建 Web UI 并启动 Bridge
-pnpm build:web    # 生产环境 Web UI（CI / GitHub Pages）
-```
-
-1. 打开 **http://localhost:8081**（或本机局域网 IP）。
-2. 将 POS / 应用指向 **`<主机IP>:9100`**。
-3. 在 **工作台** 中查看网络信息、调试打印与模拟场景。
-
-> **局域网访问：** 同网段设备请用 `http://<Bridge机器IP>:8081`，不要用 `localhost`。
-
-**TCP 快速测试：**
-
-```bash
+# TCP 快速测试
 printf '\x1b@\x1ba\x01Hello PrintHub\n\x1dV\x00' | nc -N localhost 9100
 ```
 
-**HTTP Raw 提交：**
+**打包：** `pnpm dist:desktop`（macOS）· `pnpm dist:desktop:win`（Windows）
 
-```bash
-curl -X POST http://localhost:8081/print/raw \
-  -H "Content-Type: application/octet-stream" \
-  --data-binary @sample.bin
-```
+| 工作台 | 预览与历史 | 调试打印 |
+|:---:|:---:|:---:|
+| ![工作台](./docs/assets/desktop-workbench.png) | ![预览](./docs/assets/desktop-preview-history.png) | ![调试](./docs/assets/desktop-debug-tspl.png) |
 
 ## 架构
 
-![PrintHub 架构图](./docs/assets/architecture.zh.png)
+![架构图](./docs/assets/architecture.zh.png)
 
-- `apps/desktop` — Electron（Bridge、托盘、可选局域网 HTTP）
-- `apps/web` — React 控制台
-- `packages/bridge` — TCP、HTTP API、WebSocket、模拟、mDNS
-- `packages/escpos`、`packages/tspl`、`packages/renderer` — 解析与渲染
-- `packages/shared`、`packages/relay-client` — 类型与 WS 客户端
+`apps/desktop` · `apps/web` · `packages/bridge` · `packages/{escpos,tspl,renderer}` · `packages/{shared,relay-client}`
 
-**CLI：** `pnpm dev` 在 **8081** 托管 `apps/web/dist`。**桌面：** Bridge 在 Electron 主进程；UI 通过 IPC 通信。
+---
 
-## Star 趋势
+MIT · [CONTRIBUTING](./CONTRIBUTING.md) · [SECURITY](./SECURITY.md)
 
 <a href="https://www.star-history.com/?repos=JackieLeee%2FPrintHub&type=date&legend=bottom-right">
  <picture>
    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=JackieLeee/PrintHub&type=date&theme=dark&legend=bottom-right&sealed_token=nZ7TJ03ductF3SiTo2_x9Ry8wmdRlWLIKmXdxoqRfHGkvFTL1NlWxsoL_mwD-dvCVfMZyzyZBzIM8Ihzq8OU20MkofoZvSxuyMsDOOtdZ4QVigSvLemN2CREu9Vshu8wZoD0fdcGEmLEiHpFYXfkdgGvjq8Zi8n1CIzMHumwS2FRSd_6JyewdE8DLc-K" />
    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=JackieLeee/PrintHub&type=date&legend=bottom-right&sealed_token=nZ7TJ03ductF3SiTo2_x9Ry8wmdRlWLIKmXdxoqRfHGkvFTL1NlWxsoL_mwD-dvCVfMZyzyZBzIM8Ihzq8OU20MkofoZvSxuyMsDOOtdZ4QVigSvLemN2CREu9Vshu8wZoD0fdcGEmLEiHpFYXfkdgGvjq8Zi8n1CIzMHumwS2FRSd_6JyewdE8DLc-K" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=JackieLeee/PrintHub&type=date&legend=bottom-right&sealed_token=nZ7TJ03ductF3SiTo2_x9Ry8wmdRlWLIKmXdxoqRfHGkvFTL1NlWxsoL_mwD-dvCVfMZyzyZBzIM8Ihzq8OU20MkofoZvSxuyMsDOOtdZ4QVigSvLemN2CREu9Vshu8wZoD0fdcGEmLEiHpFYXfkdgGvjq8Zi8n1CIzMHumwS2FRSd_6JyewdE8DLc-K" />
+   <img alt="Star 趋势" src="https://api.star-history.com/chart?repos=JackieLeee/PrintHub&type=date&legend=bottom-right&sealed_token=nZ7TJ03ductF3SiTo2_x9Ry8wmdRlWLIKmXdxoqRfHGkvFTL1NlWxsoL_mwD-dvCVfMZyzyZBzIM8Ihzq8OU20MkofoZvSxuyMsDOOtdZ4QVigSvLemN2CREu9Vshu8wZoD0fdcGEmLEiHpFYXfkdgGvjq8Zi8n1CIzMHumwS2FRSd_6JyewdE8DLc-K" />
  </picture>
 </a>
-
----
-
-MIT License — 见 [LICENSE](./LICENSE)。  
-参与贡献：[CONTRIBUTING.md](./CONTRIBUTING.md) · 安全：[SECURITY.md](./SECURITY.md)
