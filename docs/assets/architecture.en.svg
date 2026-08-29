@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="920" viewBox="0 0 1400 920">
+  <defs>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <polygon points="0 0, 10 4, 0 8" fill="#2563EB"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <polygon points="0 0, 10 4, 0 8" fill="#059669"/>
+    </marker>
+    <marker id="arrow-purple" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <polygon points="0 0, 10 4, 0 8" fill="#7C3AED"/>
+    </marker>
+    <marker id="arrow-gray" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <polygon points="0 0, 10 4, 0 8" fill="#6B7280"/>
+    </marker>
+  </defs>
+
+  <rect width="1400" height="920" fill="#FFFFFF"/>
+
+  <text x="700" y="42" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="28" font-weight="700" fill="#111827">PrintHub Architecture</text>
+  <text x="700" y="68" text-anchor="middle" font-family="system-ui, sans-serif" font-size="14" fill="#6B7280">LAN virtual ESC/POS + TSPL printer | CLI | Desktop | GitHub Pages</text>
+
+  <!-- Connections (orthogonal, routed in gaps) -->
+  <g id="connections">
+    <!-- TCP: POS -> Bridge -->
+    <line x1="282" y1="210" x2="358" y2="210" stroke="#2563EB" stroke-width="2.5" marker-end="url(#arrow-blue)"/>
+
+    <!-- HTTP/WS: Bridge <-> Dashboard (gap corridor y=210) -->
+    <line x1="722" y1="210" x2="818" y2="210" stroke="#059669" stroke-width="2" marker-end="url(#arrow-green)"/>
+    <line x1="818" y1="218" x2="722" y2="218" stroke="#059669" stroke-width="2" marker-end="url(#arrow-green)"/>
+
+    <!-- IPC: Desktop -> Dashboard (via gap x=770) -->
+    <path d="M 722 394 L 770 394 L 770 268 L 818 268" fill="none" stroke="#7C3AED" stroke-width="2" marker-end="url(#arrow-purple)"/>
+
+    <!-- Optional remote WS: GitHub Pages -> bottom bus -> Bridge WS -->
+    <path d="M 282 394 L 310 394 L 310 466 L 340 466 L 340 236 L 358 236" fill="none" stroke="#9CA3AF" stroke-width="1.8" stroke-dasharray="6 4" marker-end="url(#arrow-gray)"/>
+  </g>
+
+
+
+  <!-- External -->
+  <rect x="40" y="110" width="240" height="200" rx="12" fill="#EFF6FF" stroke="#2563EB" stroke-width="2"/>
+  <text x="160" y="140" text-anchor="middle" font-family="system-ui, sans-serif" font-size="16" font-weight="700" fill="#1E40AF">POS / Test Tools</text>
+  <text x="160" y="162" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" fill="#64748B">External</text>
+  <text x="60" y="195" font-family="system-ui, sans-serif" font-size="13" fill="#334155">- POS / cashier systems</text>
+  <text x="60" y="220" font-family="system-ui, sans-serif" font-size="13" fill="#334155">- Virtual printer driver</text>
+  <text x="60" y="245" font-family="system-ui, sans-serif" font-size="13" fill="#334155">- curl / netcat / scripts</text>
+  <text x="60" y="280" font-family="system-ui, sans-serif" font-size="12" font-weight="600" fill="#2563EB">TCP :9100 | ESC/POS | TSPL</text>
+
+  <!-- Bridge -->
+  <rect x="360" y="96" width="360" height="228" rx="12" fill="#EFF6FF" stroke="#2563EB" stroke-width="2"/>
+  <text x="540" y="126" text-anchor="middle" font-family="system-ui, sans-serif" font-size="16" font-weight="700" fill="#1E40AF">VirtPrinterBridge</text>
+  <text x="540" y="148" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" fill="#64748B">packages/bridge | Node (CLI) or Electron Main</text>
+
+  <rect x="380" y="164" width="100" height="72" rx="8" fill="#FFFFFF" stroke="#93C5FD"/>
+  <text x="430" y="186" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" font-weight="600" fill="#1E3A8A">TCP</text>
+  <text x="430" y="204" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" fill="#475569">:9100</text>
+  <text x="430" y="222" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" fill="#64748B">ingest | detect</text>
+
+  <rect x="490" y="164" width="100" height="72" rx="8" fill="#FFFFFF" stroke="#93C5FD"/>
+  <text x="540" y="186" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" font-weight="600" fill="#1E3A8A">HTTP</text>
+  <text x="540" y="204" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" fill="#475569">:8081</text>
+  <text x="540" y="222" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" fill="#64748B">REST | static UI</text>
+
+  <rect x="600" y="164" width="100" height="72" rx="8" fill="#FFFFFF" stroke="#93C5FD"/>
+  <text x="650" y="186" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" font-weight="600" fill="#1E3A8A">WebSocket</text>
+  <text x="650" y="204" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" fill="#475569">:8081</text>
+  <text x="650" y="222" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" fill="#64748B">live jobs | status</text>
+
+  <text x="380" y="262" font-family="system-ui, sans-serif" font-size="12" fill="#475569">mDNS | printer sim | job filter | chunked transfer</text>
+  <text x="380" y="284" font-family="system-ui, sans-serif" font-size="11" fill="#64748B">CLI: HTTP always on | Desktop: LAN HTTP optional (tray toggle)</text>
+  <text x="380" y="304" font-family="system-ui, sans-serif" font-size="11" fill="#64748B">Preview rendering stays in the browser - bridge never imports renderer</text>
+
+  <!-- Desktop shell -->
+  <rect x="360" y="340" width="360" height="108" rx="12" fill="#F5F3FF" stroke="#7C3AED" stroke-width="2"/>
+  <text x="540" y="370" text-anchor="middle" font-family="system-ui, sans-serif" font-size="15" font-weight="700" fill="#5B21B6">Desktop Shell</text>
+  <text x="540" y="392" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" fill="#64748B">apps/desktop | Electron | macOS / Windows</text>
+  <text x="380" y="418" font-family="system-ui, sans-serif" font-size="12" fill="#475569">Tray | settings | i18n | ui-server 127.0.0.1 serves web/dist</text>
+  <text x="380" y="438" font-family="system-ui, sans-serif" font-size="12" fill="#475569">Local UI uses IPC (DesktopRelayClient), not WebSocket</text>
+
+  <!-- Web Dashboard -->
+  <rect x="820" y="110" width="300" height="338" rx="12" fill="#ECFDF5" stroke="#059669" stroke-width="2"/>
+  <text x="970" y="140" text-anchor="middle" font-family="system-ui, sans-serif" font-size="16" font-weight="700" fill="#065F46">Web Dashboard</text>
+  <text x="970" y="162" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" fill="#64748B">apps/web | React | Vite</text>
+
+  <rect x="850" y="178" width="240" height="120" rx="8" fill="#FFFFFF" stroke="#A7F3D0"/>
+  <rect x="862" y="190" width="216" height="14" rx="3" fill="#D1FAE5"/>
+  <rect x="862" y="212" width="140" height="8" rx="2" fill="#E5E7EB"/>
+  <rect x="862" y="228" width="180" height="8" rx="2" fill="#E5E7EB"/>
+  <rect x="862" y="244" width="160" height="8" rx="2" fill="#E5E7EB"/>
+  <rect x="900" y="262" width="80" height="24" rx="4" fill="#F3F4F6"/>
+
+  <text x="850" y="320" font-family="system-ui, sans-serif" font-size="12" fill="#334155">- Live job viewer | Canvas preview</text>
+  <text x="850" y="342" font-family="system-ui, sans-serif" font-size="12" fill="#334155">- History replay | debug submit</text>
+  <text x="850" y="364" font-family="system-ui, sans-serif" font-size="12" fill="#334155">- Settings | themes | hub connect</text>
+  <text x="850" y="394" font-family="system-ui, sans-serif" font-size="11" font-weight="600" fill="#059669">Client-side: renderer | escpos | tspl</text>
+  <text x="850" y="414" font-family="system-ui, sans-serif" font-size="11" fill="#64748B">History in browser IndexedDB (not on server)</text>
+
+  <!-- GitHub Pages -->
+  <rect x="40" y="340" width="240" height="108" rx="12" fill="#F9FAFB" stroke="#9CA3AF" stroke-width="2" stroke-dasharray="6 4"/>
+  <text x="160" y="370" text-anchor="middle" font-family="system-ui, sans-serif" font-size="15" font-weight="700" fill="#374151">GitHub Pages</text>
+  <text x="160" y="392" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" fill="#64748B">Static SPA only | no local bridge</text>
+  <text x="60" y="418" font-family="system-ui, sans-serif" font-size="12" fill="#475569">Offline debug preview works in-browser</text>
+  <text x="60" y="438" font-family="system-ui, sans-serif" font-size="12" fill="#475569">Live jobs: connect to remote bridge via WS</text>
+
+  <!-- Runtime modes -->
+  <rect x="40" y="480" width="1080" height="118" rx="12" fill="#F8FAFC" stroke="#CBD5E1"/>
+  <text x="60" y="508" font-family="system-ui, sans-serif" font-size="14" font-weight="700" fill="#0F172A">Runtime modes</text>
+  <text x="60" y="538" font-family="system-ui, sans-serif" font-size="12" font-weight="600" fill="#2563EB">CLI</text>
+  <text x="100" y="538" font-family="system-ui, sans-serif" font-size="12" fill="#475569">Node process | TCP + HTTP/WS | bridge serves web at :8081 | transport = WebSocket</text>
+  <text x="60" y="564" font-family="system-ui, sans-serif" font-size="12" font-weight="600" fill="#7C3AED">Desktop</text>
+  <text x="120" y="564" font-family="system-ui, sans-serif" font-size="12" fill="#475569">Bridge in Electron main | TCP always | LAN HTTP off by default | local UI via ui-server + IPC</text>
+  <text x="60" y="590" font-family="system-ui, sans-serif" font-size="12" font-weight="600" fill="#6B7280">GitHub Pages</text>
+  <text x="160" y="590" font-family="system-ui, sans-serif" font-size="12" fill="#475569">Static hosting | optional WebSocket to a running bridge on your LAN</text>
+
+  <!-- Packages -->
+  <text x="40" y="640" font-family="system-ui, sans-serif" font-size="14" font-weight="700" fill="#0F172A">Internal packages</text>
+  <rect x="40" y="652" width="520" height="88" rx="10" fill="#F3F4F6" stroke="#D1D5DB"/>
+  <text x="60" y="678" font-family="system-ui, sans-serif" font-size="12" font-weight="600" fill="#374151">Bridge-side (Node / Electron main)</text>
+  <text x="60" y="702" font-family="system-ui, sans-serif" font-size="12" fill="#4B5563">shared | tspl | sharp | ws | bonjour-service</text>
+  <text x="60" y="724" font-family="system-ui, sans-serif" font-size="11" fill="#6B7280">Ingest bytes | protocol detect | sim | broadcast BridgeMessage JSON</text>
+  <rect x="580" y="652" width="540" height="88" rx="10" fill="#F3F4F6" stroke="#D1D5DB"/>
+  <text x="600" y="678" font-family="system-ui, sans-serif" font-size="12" font-weight="600" fill="#374151">Client-side (browser / Electron renderer)</text>
+  <text x="600" y="702" font-family="system-ui, sans-serif" font-size="12" fill="#4B5563">shared | escpos | tspl | renderer | relay-client (+ DesktopRelayClient in desktop)</text>
+  <text x="600" y="724" font-family="system-ui, sans-serif" font-size="11" fill="#6B7280">Parse | preview | chunked reassembly | IndexedDB history</text>
+  <g id="connection-labels">
+
+    <text x="320" y="200" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" fill="#2563EB">TCP</text>
+    <text x="770" y="198" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" fill="#059669">HTTP / WS :8081</text>
+    <text x="778" y="338" font-family="system-ui, sans-serif" font-size="11" fill="#7C3AED">IPC</text>
+    <text x="505" y="458" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" fill="#6B7280">optional remote WS</text>
+  </g>
+
+
+  <!-- Legend -->
+  <rect x="40" y="770" width="1320" height="120" rx="10" fill="#FAFAFA" stroke="#E5E7EB"/>
+  <text x="60" y="798" font-family="system-ui, sans-serif" font-size="13" font-weight="700" fill="#111827">Legend</text>
+  <line x1="60" y1="822" x2="110" y2="822" stroke="#2563EB" stroke-width="2.5" marker-end="url(#arrow-blue)"/>
+  <text x="120" y="826" font-family="system-ui, sans-serif" font-size="12" fill="#374151">External to Bridge (TCP :9100)</text>
+  <line x1="60" y1="852" x2="110" y2="852" stroke="#059669" stroke-width="2" marker-end="url(#arrow-green)"/>
+  <text x="120" y="856" font-family="system-ui, sans-serif" font-size="12" fill="#374151">Bridge to Dashboard (HTTP / WebSocket :8081)</text>
+  <line x1="420" y1="822" x2="470" y2="822" stroke="#7C3AED" stroke-width="2" marker-end="url(#arrow-purple)"/>
+  <text x="480" y="826" font-family="system-ui, sans-serif" font-size="12" fill="#374151">Desktop local UI (Electron IPC)</text>
+  <line x1="420" y1="852" x2="470" y2="852" stroke="#9CA3AF" stroke-width="1.8" stroke-dasharray="6 4" marker-end="url(#arrow-gray)"/>
+  <text x="480" y="856" font-family="system-ui, sans-serif" font-size="12" fill="#374151">Optional remote WebSocket (GitHub Pages / LAN browser)</text>
+  <line x1="860" y1="822" x2="910" y2="822" stroke="#9CA3AF" stroke-width="1.8" stroke-dasharray="6 4"/>
+  <text x="920" y="826" font-family="system-ui, sans-serif" font-size="12" fill="#374151">Dashed box = no bundled bridge</text>
+  <rect x="860" y="842" width="50" height="16" rx="4" fill="#F3F4F6" stroke="#D1D5DB"/>
+  <text x="920" y="856" font-family="system-ui, sans-serif" font-size="12" fill="#374151">Gray box = shared internal packages</text>
+</svg>
