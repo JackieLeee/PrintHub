@@ -1,4 +1,7 @@
-import { strictEqual } from "node:assert";
+import { strictEqual, ok } from "node:assert";
+import { readFileSync } from "node:fs";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, it } from "node:test";
 import { decodeBitmapFromHex } from "./bitmap.js";
 import { formatLabelSize } from "./label-size.js";
@@ -11,6 +14,21 @@ function enc(s: string): Uint8Array {
 }
 
 describe("parseTspl", () => {
+  it("parses warehouse label without warnings", () => {
+    const path = join(dirname(fileURLToPath(import.meta.url)), "../../fixtures/tspl/warehouse-label.tspl");
+    const payload = new TextEncoder().encode(readFileSync(path, "utf8"));
+    const { warnings } = parseTspl(payload);
+    strictEqual(warnings.length, 0, warnings.join("; "));
+  });
+
+  it("parses PUTBMP, CODEPAGE without warnings", () => {
+    const payload = enc('PUTBMP 1,"logo.bmp"\nCODEPAGE 936\n');
+    const { commands, warnings } = parseTspl(payload);
+    strictEqual(warnings.length, 0);
+    strictEqual(commands.some((c) => c.kind === "fileRef" && c.filename === "logo.bmp"), true);
+    strictEqual(commands.some((c) => c.kind === "codepage" && c.name === "936"), true);
+  });
+
   it("parses SIZE, TEXT, BARCODE, PRINT", () => {
     const payload = enc(
       'SIZE 40 mm,30 mm\nGAP 2 mm,0\nCLS\nTEXT 20,20,"4",0,1,1,"Hello Label"\nBARCODE 20,80,"128",40,1,0,2,4,"123456"\nPRINT 1\n',
@@ -20,6 +38,13 @@ describe("parseTspl", () => {
     strictEqual(commands.some((c) => c.kind === "text" && c.content === "Hello Label"), true);
     strictEqual(commands.some((c) => c.kind === "barcode" && c.data === "123456"), true);
     strictEqual(commands.some((c) => c.kind === "print"), true);
+    for (const cmd of commands) {
+      ok(cmd.span.length > 0, `${cmd.kind} span length`);
+      ok(cmd.span.offset >= 0, `${cmd.kind} span offset`);
+    }
+    const textCmd = commands.find((c) => c.kind === "text");
+    const decoded = new TextDecoder().decode(payload);
+    strictEqual(textCmd?.span.offset, decoded.indexOf("TEXT"));
   });
 
   it("parses BOX, QRCODE, CIRCLE", () => {

@@ -9,11 +9,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@virt-printer/analyze": "workspace:*",
     "@virt-printer/escpos": "workspace:*",
     "@virt-printer/relay-client": "workspace:*",
     "@virt-printer/renderer": "workspace:*",
     "@virt-printer/shared": "workspace:*",
     "@virt-printer/tspl": "workspace:*",
+    "jspdf": "^4.2.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },

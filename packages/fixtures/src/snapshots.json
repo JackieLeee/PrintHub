@@ -1,0 +1,301 @@
+{
+  "escpos-demo-receipt": {
+    "commandCount": 24,
+    "unsupportedCount": 0,
+    "textCommandCount": 5,
+    "paperWidth": 576,
+    "warningCount": 0,
+    "categories": {
+      "initialize": 1,
+      "alignment": 4,
+      "text": 5,
+      "codePage": 1,
+      "style": 2,
+      "lineSpacing": 2,
+      "image": 1,
+      "barcode": 1,
+      "feed": 2,
+      "qrCode": 5
+    }
+  },
+  "escpos-80mm-gbk-text": {
+    "commandCount": 190,
+    "unsupportedCount": 0,
+    "textCommandCount": 27,
+    "paperWidth": 576,
+    "warningCount": 0,
+    "categories": {
+      "initialize": 27,
+      "alignment": 27,
+      "style": 1,
+      "font": 54,
+      "codePage": 54,
+      "text": 27
+    }
+  },
+  "escpos-58mm-gbk-text": {
+    "commandCount": 232,
+    "unsupportedCount": 0,
+    "textCommandCount": 33,
+    "paperWidth": 384,
+    "warningCount": 0,
+    "categories": {
+      "initialize": 33,
+      "alignment": 33,
+      "style": 1,
+      "font": 66,
+      "codePage": 66,
+      "text": 33
+    }
+  },
+  "escpos-minimal-text-cut": {
+    "commandCount": 3,
+    "unsupportedCount": 0,
+    "textCommandCount": 1,
+    "paperWidth": 384,
+    "warningCount": 0,
+    "categories": {
+      "initialize": 1,
+      "text": 1,
+      "cut": 1
+    }
+  },
+  "escpos-align-bold-cut": {
+    "commandCount": 6,
+    "unsupportedCount": 0,
+    "textCommandCount": 1,
+    "paperWidth": 384,
+    "warningCount": 0,
+    "categories": {
+      "initialize": 1,
+      "alignment": 1,
+      "style": 2,
+      "text": 1,
+      "cut": 1
+    }
+  },
+  "tspl-demo-label": {
+    "commandCount": 14,
+    "unsupportedCount": 0,
+    "textCommandCount": 3,
+    "warningCount": 0,
+    "categories": {
+      "size": 1,
+      "gap": 1,
+      "direction": 1,
+      "reference": 1,
+      "cls": 1,
+      "box": 1,
+      "text": 3,
+      "bar": 1,
+      "reverse": 1,
+      "barcode": 1,
+      "qrcode": 1,
+      "print": 1
+    }
+  },
+  "tspl-minimal-text": {
+    "commandCount": 5,
+    "unsupportedCount": 0,
+    "textCommandCount": 1,
+    "warningCount": 0,
+    "categories": {
+      "size": 1,
+      "gap": 1,
+      "cls": 1,
+      "text": 1,
+      "print": 1
+    }
+  },
+  "tspl-barcode-label": {
+    "commandCount": 5,
+    "unsupportedCount": 0,
+    "textCommandCount": 0,
+    "warningCount": 0,
+    "categories": {
+      "size": 1,
+      "gap": 1,
+      "cls": 1,
+      "barcode": 1,
+      "print": 1
+    }
+  },
+  "escpos-restaurant-utf8": {
+    "commandCount": 17,
+    "unsupportedCount": 0,
+    "textCommandCount": 8,
+    "paperWidth": 384,
+    "warningCount": 0,
+    "categories": {
+      "style": 8,
+      "text": 8,
+      "cut": 1
+    }
+  },
+  "escpos-retail-gbk-receipt": {
+    "commandCount": 22,
+    "unsupportedCount": 0,
+    "textCommandCount": 4,
+    "paperWidth": 576,
+    "warningCount": 0,
+    "categories": {
+      "initialize": 1,
+      "alignment": 2,
+      "codePage": 1,
+      "text": 4,
+      "style": 5,
+      "barcode": 1,
+      "lineFeed": 1,
+      "qrCode": 5,
+      "feed": 1,
+      "cut": 1
+    }
+  },
+  "escpos-raster-logo-cut": {
+    "commandCount": 9,
+    "unsupportedCount": 0,
+    "textCommandCount": 2,
+    "paperWidth": 384,
+    "warningCount": 0,
+    "categories": {
+      "initialize": 1,
+      "alignment": 2,
+      "text": 2,
+      "rasterImage": 1,
+      "lineFeed": 1,
+      "feed": 1,
+      "cut": 1
+    }
+  },
+  "escpos-star-image-receipt": {
+    "commandCount": 7,
+    "unsupportedCount": 0,
+    "textCommandCount": 1,
+    "paperWidth": 384,
+    "warningCount": 0,
+    "categories": {
+      "initialize": 1,
+      "lineSpacing": 2,
+      "image": 1,
+      "text": 1,
+      "feed": 1,
+      "cut": 1
+    }
+  },
+  "escpos-cash-drawer-sale": {
+    "commandCount": 6,
+    "unsupportedCount": 0,
+    "textCommandCount": 2,
+    "paperWidth": 384,
+    "warningCount": 0,
+    "categories": {
+      "initialize": 1,
+      "text": 2,
+      "cashDrawer": 1,
+      "feed": 1,
+      "cut": 1
+    }
+  },
+  "escpos-style-mix-receipt": {
+    "commandCount": 12,
+    "unsupportedCount": 0,
+    "textCommandCount": 3,
+    "paperWidth": 384,
+    "warningCount": 0,
+    "categories": {
+      "initialize": 2,
+      "style": 1,
+      "codePage": 1,
+      "font": 3,
+      "text": 3,
+      "feed": 1,
+      "cut": 1
+    }
+  },
+  "tspl-block-label": {
+    "commandCount": 7,
+    "unsupportedCount": 0,
+    "textCommandCount": 1,
+    "warningCount": 0,
+    "categories": {
+      "size": 1,
+      "gap": 1,
+      "direction": 1,
+      "cls": 1,
+      "block": 1,
+      "text": 1,
+      "print": 1
+    }
+  },
+  "tspl-bitmap-label": {
+    "commandCount": 7,
+    "unsupportedCount": 0,
+    "textCommandCount": 1,
+    "warningCount": 0,
+    "categories": {
+      "size": 1,
+      "gap": 1,
+      "cls": 1,
+      "text": 1,
+      "bitmap": 1,
+      "barcode": 1,
+      "print": 1
+    }
+  },
+  "tspl-shapes-label": {
+    "commandCount": 12,
+    "unsupportedCount": 0,
+    "textCommandCount": 1,
+    "warningCount": 0,
+    "categories": {
+      "size": 1,
+      "gap": 1,
+      "speed": 1,
+      "density": 1,
+      "direction": 1,
+      "reference": 1,
+      "cls": 1,
+      "box": 1,
+      "circle": 1,
+      "ellipse": 1,
+      "text": 1,
+      "print": 1
+    }
+  },
+  "tspl-warehouse-label": {
+    "commandCount": 14,
+    "unsupportedCount": 0,
+    "textCommandCount": 1,
+    "warningCount": 0,
+    "categories": {
+      "size": 1,
+      "gap": 1,
+      "bline": 1,
+      "offset": 1,
+      "shift": 1,
+      "speed": 1,
+      "density": 1,
+      "cls": 1,
+      "text": 1,
+      "barcode": 1,
+      "qrcode": 1,
+      "fileRef": 1,
+      "codepage": 1,
+      "print": 1
+    }
+  },
+  "escpos-charset-density": {
+    "commandCount": 6,
+    "unsupportedCount": 0,
+    "textCommandCount": 1,
+    "paperWidth": 384,
+    "warningCount": 0,
+    "categories": {
+      "initialize": 1,
+      "codePage": 2,
+      "style": 1,
+      "text": 1,
+      "feed": 1
+    }
+  }
+}

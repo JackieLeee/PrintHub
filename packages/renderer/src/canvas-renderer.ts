@@ -784,6 +784,34 @@ export async function renderReceipt(
         }
         break;
       }
+      case "lineSpacing": {
+        state.lineSpacingDots =
+          command.spacing === null ? DEFAULT_LINE_SPACING_DOTS : command.spacing;
+        if (isHighlighted) {
+          const idx = commands.indexOf(command);
+          for (let j = idx + 1; j < commands.length; j++) {
+            const nextCmd = commands[j]!;
+            if (nextCmd.category === "feed" || nextCmd.category === "lineFeed") {
+              const element = elements.find((e) => e.commandId === nextCmd.id);
+              if (element) {
+                ctx.fillStyle = "rgba(255, 214, 102, 0.35)";
+                ctx.fillRect(PAPER_INSET, element.y, paperWidthPx, element.height);
+              }
+              break;
+            }
+            if (
+              nextCmd.category === "text" ||
+              nextCmd.category === "image" ||
+              nextCmd.category === "rasterImage" ||
+              nextCmd.category === "barcode" ||
+              nextCmd.category === "qrCode"
+            ) {
+              break;
+            }
+          }
+        }
+        break;
+      }
       case "image":
       case "rasterImage": {
         const imageCmd = command as ImageCommand;

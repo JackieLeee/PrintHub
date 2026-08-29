@@ -4,6 +4,14 @@ function formatDim(value: number): string {
   return Number.isInteger(value) ? String(value) : String(value).replace(/\.0$/, "");
 }
 
+export function parseLabelSizeMm(commands: TsplCommand[]): { widthMm: number; heightMm: number } | null {
+  for (const cmd of commands) {
+    if (cmd.kind !== "size" || cmd.unit !== "mm") continue;
+    return { widthMm: cmd.width, heightMm: cmd.height };
+  }
+  return null;
+}
+
 export function formatLabelSize(commands: TsplCommand[]): string | null {
   for (const cmd of commands) {
     if (cmd.kind !== "size") continue;

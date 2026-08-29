@@ -1,6 +1,6 @@
 import { decodeBitmapData, parseBitmapHeader } from "./bitmap.js";
 import { parseBitmapAtOffset } from "./bitmap-scan.js";
-import type { TsplCommand, TsplParseResult, TsplUnit } from "./types.js";
+import type { TsplCommand, TsplCommandSpan, TsplParsedCommand, TsplParseResult, TsplUnit } from "./types.js";
 import {
   extractQuotedStrings,
   parseMeasurePair,
@@ -18,7 +18,7 @@ export function parseTspl(payload: Uint8Array): TsplParseResult {
 class TsplParser {
   private data: Uint8Array;
   private i = 0;
-  private commands: TsplCommand[] = [];
+  private commands: TsplParseResult["commands"] = [];
   private warnings: string[] = [];
 
   constructor(data: Uint8Array) {
@@ -37,9 +37,21 @@ class TsplParser {
       }
       if (this.i >= this.data.length) break;
 
+      const bitmapStart = this.i;
       const bitmap = parseBitmapAtOffset(this.data, this.i);
       if (bitmap) {
-        this.pushBitmap(bitmap);
+        this.pushParsed(
+          {
+            kind: "bitmap",
+            x: bitmap.header.x,
+            y: bitmap.header.y,
+            width: bitmap.header.width,
+            height: bitmap.header.height,
+            mode: bitmap.header.mode,
+            data: bitmap.data,
+          },
+          { offset: bitmapStart, length: bitmap.nextOffset - bitmapStart },
+        );
         this.i = bitmap.nextOffset;
         continue;
       }
@@ -48,36 +60,30 @@ class TsplParser {
       const line = this.readLine();
       if (!line.trim()) continue;
 
+      const lineSpan: TsplCommandSpan = { offset: lineStart, length: this.i - lineStart };
+
       const upper = line.trim().toUpperCase();
       if (upper.startsWith("BITMAP")) {
         this.i = lineStart;
-        this.parseBitmapLine(line);
+        this.parseBitmapLine(line, lineStart);
         continue;
       }
 
-      this.parseTextLine(line);
+      this.parseTextLine(line, lineSpan);
     }
     return { commands: this.commands, warnings: this.warnings };
   }
 
-  private pushBitmap(bitmap: { header: { x: number; y: number; width: number; height: number; mode: number }; data: Uint8Array }): void {
-    const { header, data } = bitmap;
-    if (data.length === 0) {
-      this.warnings.push(`BITMAP ${header.width}x${header.height} — no image data`);
+  private pushParsed(cmd: TsplCommand, span: TsplCommandSpan): void {
+    if (cmd.kind === "bitmap" && cmd.data.length === 0) {
+      this.warnings.push(`BITMAP ${cmd.width}x${cmd.height} — no image data`);
       return;
     }
-    this.commands.push({
-      kind: "bitmap",
-      x: header.x,
-      y: header.y,
-      width: header.width,
-      height: header.height,
-      mode: header.mode,
-      data,
-    });
+    const parsed: TsplParsedCommand = { ...cmd, span };
+    this.commands.push(parsed);
   }
 
-  private parseBitmapLine(line: string): void {
+  private parseBitmapLine(line: string, lineStart: number): void {
     const header = parseBitmapHeader(line);
     if (!header) {
       this.warnings.push(`Invalid BITMAP line: ${line.slice(0, 48)}`);
@@ -87,7 +93,18 @@ class TsplParser {
     const { data, consumed } = decodeBitmapData(header, this.trailingBytes());
     if (consumed > 0) this.i += consumed;
 
-    this.pushBitmap({ header, data });
+    this.pushParsed(
+      {
+        kind: "bitmap",
+        x: header.x,
+        y: header.y,
+        width: header.width,
+        height: header.height,
+        mode: header.mode,
+        data,
+      },
+      { offset: lineStart, length: this.i - lineStart },
+    );
   }
 
   private readLine(): string {
@@ -110,7 +127,14 @@ class TsplParser {
     return this.data.slice(this.i);
   }
 
-  private parseTextLine(line: string): void {
+  private currentSpan: TsplCommandSpan = { offset: 0, length: 0 };
+
+  private pushLine(cmd: TsplCommand): void {
+    this.pushParsed(cmd, this.currentSpan);
+  }
+
+  private parseTextLine(line: string, span: TsplCommandSpan): void {
+    this.currentSpan = span;
     const trimmed = line.trim();
     const tokens = tokenizeLine(trimmed);
     if (tokens.length === 0) return;
@@ -127,41 +151,41 @@ class TsplParser {
         this.pushMeasurePair("bline", trimmed);
         break;
       case "DIRECTION":
-        this.commands.push({
+        this.pushLine({
           kind: "direction",
           value: parseNumber(tokens[1]) === 1 ? 1 : 0,
           mirror: parseNumber(tokens[2]) === 1 ? 1 : 0,
         });
         break;
       case "REFERENCE":
-        this.commands.push({ kind: "reference", x: parseNumber(tokens[1]), y: parseNumber(tokens[2]) });
+        this.pushLine({ kind: "reference", x: parseNumber(tokens[1]), y: parseNumber(tokens[2]) });
         break;
       case "OFFSET": {
         const measure = parseSingleMeasure(trimmed);
-        this.commands.push({ kind: "offset", value: measure.value, unit: measure.unit });
+        this.pushLine({ kind: "offset", value: measure.value, unit: measure.unit });
         break;
       }
       case "SHIFT":
         if (tokens.length >= 3) {
-          this.commands.push({ kind: "shift", x: parseNumber(tokens[1]), y: parseNumber(tokens[2]) });
+          this.pushLine({ kind: "shift", x: parseNumber(tokens[1]), y: parseNumber(tokens[2]) });
         } else {
-          this.commands.push({ kind: "shift", x: 0, y: parseNumber(tokens[1]) });
+          this.pushLine({ kind: "shift", x: 0, y: parseNumber(tokens[1]) });
         }
         break;
       case "SPEED":
-        this.commands.push({ kind: "speed", ips: parseNumber(tokens[1]) });
+        this.pushLine({ kind: "speed", ips: parseNumber(tokens[1]) });
         break;
       case "DENSITY":
-        this.commands.push({ kind: "density", level: parseNumber(tokens[1]) });
+        this.pushLine({ kind: "density", level: parseNumber(tokens[1]) });
         break;
       case "FEED":
-        this.commands.push({ kind: "feed", dots: parseNumber(tokens[1]) });
+        this.pushLine({ kind: "feed", dots: parseNumber(tokens[1]) });
         break;
       case "BACKFEED":
-        this.commands.push({ kind: "backfeed", dots: parseNumber(tokens[1]) });
+        this.pushLine({ kind: "backfeed", dots: parseNumber(tokens[1]) });
         break;
       case "FORMFEED":
-        this.commands.push({ kind: "formfeed" });
+        this.pushLine({ kind: "formfeed" });
         break;
       case "SET":
       case "SETPEEL":
@@ -171,10 +195,10 @@ class TsplParser {
         // Printer hardware settings — no structured preview effect.
         break;
       case "CLS":
-        this.commands.push({ kind: "cls" });
+        this.pushLine({ kind: "cls" });
         break;
       case "HOME":
-        this.commands.push({ kind: "home" });
+        this.pushLine({ kind: "home" });
         break;
       case "TEXT":
         this.parseText(trimmed, tokens);
@@ -189,7 +213,7 @@ class TsplParser {
         this.parseQrcode(trimmed, tokens);
         break;
       case "BOX":
-        this.commands.push({
+        this.pushLine({
           kind: "box",
           x: parseNumber(tokens[1]),
           y: parseNumber(tokens[2]),
@@ -200,7 +224,7 @@ class TsplParser {
         });
         break;
       case "BAR":
-        this.commands.push({
+        this.pushLine({
           kind: "bar",
           x: parseNumber(tokens[1]),
           y: parseNumber(tokens[2]),
@@ -209,7 +233,7 @@ class TsplParser {
         });
         break;
       case "CIRCLE":
-        this.commands.push({
+        this.pushLine({
           kind: "circle",
           x: parseNumber(tokens[1]),
           y: parseNumber(tokens[2]),
@@ -218,7 +242,7 @@ class TsplParser {
         });
         break;
       case "ELLIPSE":
-        this.commands.push({
+        this.pushLine({
           kind: "ellipse",
           x: parseNumber(tokens[1]),
           y: parseNumber(tokens[2]),
@@ -228,7 +252,7 @@ class TsplParser {
         });
         break;
       case "REVERSE":
-        this.commands.push({
+        this.pushLine({
           kind: "reverse",
           x: parseNumber(tokens[1]),
           y: parseNumber(tokens[2]),
@@ -237,16 +261,28 @@ class TsplParser {
         });
         break;
       case "PRINT":
-        this.commands.push({
+        this.pushLine({
           kind: "print",
           copies: parseNumber(tokens[1]) || 1,
           sets: parseNumber(tokens[2]) || 1,
         });
         break;
       case "PUTBMP":
-      case "PUTPCX":
-        this.warnings.push(`${cmd} file reference not supported in preview: ${trimmed.slice(0, 40)}`);
+      case "PUTPCX": {
+        const quoted = extractQuotedStrings(trimmed);
+        const filename = quoted[0] ?? trimmed.replace(/^(PUTBMP|PUTPCX)\s+/i, "").trim();
+        this.pushLine({
+          kind: "fileRef",
+          format: cmd === "PUTBMP" ? "bmp" : "pcx",
+          filename,
+        });
         break;
+      }
+      case "CODEPAGE": {
+        const name = unquote(tokens[1] ?? "936");
+        this.pushLine({ kind: "codepage", name });
+        break;
+      }
       default:
         this.warnings.push(`Unknown TSPL command: ${cmd}`);
     }
@@ -256,7 +292,7 @@ class TsplParser {
     const pair = parseMeasurePair(line);
     const unit: TsplUnit =
       pair.first.unit !== "dot" ? pair.first.unit : pair.second.unit !== "dot" ? pair.second.unit : "inch";
-    this.commands.push({
+    this.pushLine({
       kind,
       value: pair.first.value,
       sensorOffset: pair.second.value,
@@ -277,13 +313,13 @@ class TsplParser {
     const hUnit = parseUnit(hMatch?.[2] || parts[1]);
     const unit: TsplUnit = wUnit !== "dot" ? wUnit : hUnit;
 
-    this.commands.push({ kind: "size", width: wVal, height: hVal, unit });
+    this.pushLine({ kind: "size", width: wVal, height: hVal, unit });
   }
 
   private parseText(line: string, tokens: string[]): void {
     const quoted = extractQuotedStrings(line);
     const content = quoted.length > 0 ? quoted[quoted.length - 1]! : "";
-    this.commands.push({
+    this.pushLine({
       kind: "text",
       x: parseNumber(tokens[1]),
       y: parseNumber(tokens[2]),
@@ -298,7 +334,7 @@ class TsplParser {
   private parseBlock(line: string, tokens: string[]): void {
     const quoted = extractQuotedStrings(line);
     const content = quoted.length > 0 ? quoted[quoted.length - 1]! : "";
-    this.commands.push({
+    this.pushLine({
       kind: "block",
       x: parseNumber(tokens[1]),
       y: parseNumber(tokens[2]),
@@ -315,7 +351,7 @@ class TsplParser {
   private parseBarcode(line: string, tokens: string[]): void {
     const quoted = extractQuotedStrings(line);
     const data = quoted.length >= 2 ? quoted[quoted.length - 1]! : quoted[0] ?? "";
-    this.commands.push({
+    this.pushLine({
       kind: "barcode",
       x: parseNumber(tokens[1]),
       y: parseNumber(tokens[2]),
@@ -332,7 +368,7 @@ class TsplParser {
   private parseQrcode(line: string, tokens: string[]): void {
     const quoted = extractQuotedStrings(line);
     const data = quoted[0] ?? "";
-    this.commands.push({
+    this.pushLine({
       kind: "qrcode",
       x: parseNumber(tokens[1]),
       y: parseNumber(tokens[2]),

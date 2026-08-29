@@ -128,6 +128,23 @@ export function parseEscPosInspector(data: Uint8Array, paperWidth = 384): ParseR
     const start = index;
     const byte = data[index]!;
 
+    // DLE EOT n — real-time status poll (common in POS drivers, not printable).
+    if (
+      byte === 0x10 &&
+      index + 2 < data.length &&
+      data[index + 1] === 0x04 &&
+      data[index + 2]! >= 0x01 &&
+      data[index + 2]! <= 0x04
+    ) {
+      index += 3;
+      continue;
+    }
+
+    if (byte === 0x05) {
+      index += 1;
+      continue;
+    }
+
     // 0x1b is ESC. most style/layout commands start with this one.
     if (byte === 0x1b) {
       if (index + 1 >= data.length) {
@@ -288,6 +305,24 @@ export function parseEscPosInspector(data: Uint8Array, paperWidth = 384): ParseR
       }
 
       if (next === 0x69) {
+        if (index + 3 < data.length) {
+          const n1 = data[index + 2]!;
+          const n2 = data[index + 3]!;
+          index += 4;
+          push({
+            ...baseCommand(
+              commandIndex,
+              "style",
+              "Star Print Mode",
+              `ESC i ; wide=${n1}, high=${n2}`,
+              start,
+              index,
+              data,
+              false,
+            ),
+          } as StyleCommand);
+          continue;
+        }
         index += 2;
         push({
           ...baseCommand(
@@ -561,20 +596,31 @@ export function parseEscPosInspector(data: Uint8Array, paperWidth = 384): ParseR
       }
 
       if (next === 0x47) {
-        state.doubleStrike = true;
-        index += 2;
+        let end = index + 2;
+        if (index + 2 < data.length) {
+          const param = data[index + 2]!;
+          if (param === 0 || param === 1 || param === 0x30 || param === 0x31) {
+            state.doubleStrike = param === 1 || param === 0x31;
+            end = index + 3;
+          } else {
+            state.doubleStrike = true;
+          }
+        } else {
+          state.doubleStrike = true;
+        }
+        index = end;
         push({
           ...baseCommand(
             commandIndex,
             "style",
             "Double Strike",
-            "ESC G ; double-strike on",
+            state.doubleStrike ? "ESC G ; double-strike on" : "ESC G ; double-strike off",
             start,
             index,
             data,
             false,
           ),
-          doubleStrike: true,
+          doubleStrike: state.doubleStrike,
         } as StyleCommand);
         continue;
       }
@@ -596,6 +642,114 @@ export function parseEscPosInspector(data: Uint8Array, paperWidth = 384): ParseR
           doubleStrike: false,
         } as StyleCommand);
         continue;
+      }
+
+      if (next === 0x5b && index + 2 < data.length) {
+        const table = data[index + 2]!;
+        index += 3;
+        push({
+          ...baseCommand(
+            commandIndex,
+            "codePage",
+            "Character Table",
+            `ESC [ ; select table ${table}`,
+            start,
+            index,
+            data,
+            false,
+          ),
+          code: table,
+          pageName: `table-${table}`,
+        } as CodePageCommand);
+        continue;
+      }
+
+      if (next === 0x7b && index + 2 < data.length) {
+        const upsideDown = data[index + 2]! !== 0 && data[index + 2]! !== 0x30;
+        index += 3;
+        push({
+          ...baseCommand(
+            commandIndex,
+            "style",
+            "Upside Down",
+            upsideDown ? "ESC { ; upside-down on" : "ESC { ; upside-down off",
+            start,
+            index,
+            data,
+            false,
+          ),
+        } as StyleCommand);
+        continue;
+      }
+
+      if (next === 0x52 && index + 2 < data.length) {
+        const charset = data[index + 2]!;
+        index += 3;
+        push({
+          ...baseCommand(
+            commandIndex,
+            "codePage",
+            "International Charset",
+            `ESC R ; charset ${charset}`,
+            start,
+            index,
+            data,
+            false,
+          ),
+          code: charset,
+          pageName: `charset-${charset}`,
+        } as CodePageCommand);
+        continue;
+      }
+
+      if (next === 0x56 && index + 2 < data.length) {
+        const units = data[index + 2]!;
+        index += 3;
+        push({
+          ...baseCommand(
+            commandIndex,
+            "feed",
+            "Feed & Cut",
+            `ESC V ; feed ${units} units`,
+            start,
+            index,
+            data,
+            units > 0,
+          ),
+          lines: units,
+          unit: "dots",
+        } as FeedCommand);
+        continue;
+      }
+
+      // Star ESC GS … (StarPRNT / Command Emulator extensions).
+      if (next === 0x1d && index + 6 < data.length) {
+        const marker = data[index + 2]!;
+        const family = data[index + 3]!;
+        if (marker === 0x29 && (family === 0x45 || family === 0x49)) {
+          const pL = data[index + 4]!;
+          const pH = data[index + 5]!;
+          const paramLen = pL + pH * 256;
+          const end = index + 6 + paramLen;
+          if (end <= data.length) {
+            const fn = data[index + 6]!;
+            index = end;
+            const label = family === 0x45 ? "Star Print Size" : "Star Printer Info";
+            push({
+              ...baseCommand(
+                commandIndex,
+                "style",
+                label,
+                `ESC GS ) ${String.fromCharCode(family)} ; fn ${fn}`,
+                start,
+                index,
+                data,
+                false,
+              ),
+            } as StyleCommand);
+            continue;
+          }
+        }
       }
 
       index += 2;
@@ -635,6 +789,82 @@ export function parseEscPosInspector(data: Uint8Array, paperWidth = 384): ParseR
       }
 
       const next = data[index + 1]!;
+
+      if (next === 0x40) {
+        state.charWidth = 1;
+        state.charHeight = 1;
+        state.bold = false;
+        state.underline = false;
+        state.doubleStrike = false;
+        state.invert = false;
+        state.alignment = "left";
+        state.utf8 = false;
+        state.codePage = "cp936";
+        state.chineseMode = false;
+        state.cellWidthScale = 1;
+        state.barcodeHeight = 80;
+        state.barcodeWidth = 2;
+        state.barcodeHri = "below";
+        index += 2;
+        push({
+          ...baseCommand(
+            commandIndex,
+            "initialize",
+            "Initialize Printer",
+            "GS @ ; reset printer to defaults",
+            start,
+            index,
+            data,
+          ),
+        });
+        continue;
+      }
+
+      if (next === 0x3a) {
+        state.chineseMode = true;
+        state.codePage = "gbk";
+        state.utf8 = false;
+        index += 2;
+        push({
+          ...baseCommand(
+            commandIndex,
+            "codePage",
+            "Chinese Mode",
+            "GS : ; enable Chinese character mode",
+            start,
+            index,
+            data,
+            false,
+          ),
+          code: 0,
+          pageName: "gbk",
+        } as CodePageCommand);
+        continue;
+      }
+
+      if (next === 0x26 && index + 2 < data.length) {
+        const param = data[index + 2]!;
+        const enabled = param === 1 || param === 0x31;
+        state.chineseMode = enabled;
+        state.codePage = enabled ? "gbk" : "cp437";
+        state.utf8 = false;
+        index += 3;
+        push({
+          ...baseCommand(
+            commandIndex,
+            "codePage",
+            "Chinese Mode",
+            enabled ? "GS & ; Chinese mode on" : "GS & ; Chinese mode off",
+            start,
+            index,
+            data,
+            false,
+          ),
+          code: param,
+          pageName: enabled ? "gbk" : "cp437",
+        } as CodePageCommand);
+        continue;
+      }
 
       if (next === 0x21 && index + 2 < data.length) {
         const value = data[index + 2]!;
@@ -686,18 +916,54 @@ export function parseEscPosInspector(data: Uint8Array, paperWidth = 384): ParseR
       if (next === 0x68 && index + 2 < data.length) {
         state.barcodeHeight = data[index + 2]!;
         index += 3;
+        push({
+          ...baseCommand(
+            commandIndex,
+            "style",
+            "Barcode Height",
+            `GS h ; height ${state.barcodeHeight}`,
+            start,
+            index,
+            data,
+            false,
+          ),
+        } as StyleCommand);
         continue;
       }
 
       if (next === 0x77 && index + 2 < data.length) {
         state.barcodeWidth = data[index + 2]!;
         index += 3;
+        push({
+          ...baseCommand(
+            commandIndex,
+            "style",
+            "Barcode Width",
+            `GS w ; module width ${state.barcodeWidth}`,
+            start,
+            index,
+            data,
+            false,
+          ),
+        } as StyleCommand);
         continue;
       }
 
       if (next === 0x48 && index + 2 < data.length) {
         state.barcodeHri = hriFromCode(data[index + 2]!);
         index += 3;
+        push({
+          ...baseCommand(
+            commandIndex,
+            "style",
+            "Barcode HRI",
+            `GS H ; HRI ${state.barcodeHri}`,
+            start,
+            index,
+            data,
+            false,
+          ),
+        } as StyleCommand);
         continue;
       }
 
@@ -1063,6 +1329,110 @@ export function parseEscPosInspector(data: Uint8Array, paperWidth = 384): ParseR
       if (
         next === 0x28 &&
         index + 2 < data.length &&
+        data[index + 2] === 0x4e
+      ) {
+        if (index + 7 > data.length) break;
+        const pL = data[index + 3]!;
+        const pH = data[index + 4]!;
+        const paramLen = pL + pH * 256;
+        const end = index + 5 + paramLen;
+        if (end > data.length) break;
+
+        const fn = data[index + 5]!;
+        if (fn === 0x30 && paramLen >= 2) {
+          const table = data[index + 6]!;
+          index = end;
+          push({
+            ...baseCommand(
+              commandIndex,
+              "codePage",
+              "Character Table",
+              `GS ( N ; table ${table}`,
+              start,
+              index,
+              data,
+              false,
+            ),
+            code: table,
+            pageName: `table-${table}`,
+          } as CodePageCommand);
+          continue;
+        }
+
+        if (fn === 0x31) {
+          index = end;
+          push({
+            ...baseCommand(
+              commandIndex,
+              "codePage",
+              "Character Table",
+              "GS ( N ; cancel table selection",
+              start,
+              index,
+              data,
+              false,
+            ),
+            code: 0,
+            pageName: "default",
+          } as CodePageCommand);
+          continue;
+        }
+
+        index = end;
+        push({
+          ...baseCommand(
+            commandIndex,
+            "unsupported",
+            "Graphics Command",
+            `GS ( N function 0x${fn.toString(16)}`,
+            start,
+            index,
+            data,
+            false,
+          ),
+          reason: `Unhandled GS ( N function 0x${fn.toString(16)}`,
+        } as UnsupportedCommand);
+        continue;
+      }
+
+      if (
+        next === 0x28 &&
+        index + 2 < data.length &&
+        data[index + 2] === 0x41
+      ) {
+        if (index + 7 > data.length) break;
+        const pL = data[index + 3]!;
+        const pH = data[index + 4]!;
+        const paramLen = pL + pH * 256;
+        const end = index + 5 + paramLen;
+        if (end > data.length) break;
+
+        const fn = data[index + 5]!;
+        if (fn === 0x00 && paramLen >= 2) {
+          const density = data[index + 6]!;
+          index = end;
+          push({
+            ...baseCommand(
+              commandIndex,
+              "style",
+              "Print Density",
+              `GS ( A ; density ${density}`,
+              start,
+              index,
+              data,
+              false,
+            ),
+          } as StyleCommand);
+          continue;
+        }
+
+        index = end;
+        continue;
+      }
+
+      if (
+        next === 0x28 &&
+        index + 2 < data.length &&
         data[index + 2] === 0x4c
       ) {
         if (index + 6 >= data.length) break;
@@ -1191,6 +1561,20 @@ export function parseEscPosInspector(data: Uint8Array, paperWidth = 384): ParseR
         state.codePage = "gbk";
         state.chineseMode = true;
         index += 2;
+        push({
+          ...baseCommand(
+            commandIndex,
+            "codePage",
+            "Chinese Mode",
+            "FS & ; select Chinese character mode",
+            start,
+            index,
+            data,
+            false,
+          ),
+          code: 0x26,
+          pageName: "gbk",
+        } as CodePageCommand);
         continue;
       }
       if (next === 0x2e) {
@@ -1198,6 +1582,20 @@ export function parseEscPosInspector(data: Uint8Array, paperWidth = 384): ParseR
         state.codePage = "cp437";
         state.chineseMode = false;
         index += 2;
+        push({
+          ...baseCommand(
+            commandIndex,
+            "codePage",
+            "Chinese Mode",
+            "FS . ; cancel Chinese character mode",
+            start,
+            index,
+            data,
+            false,
+          ),
+          code: 0x2e,
+          pageName: "cp437",
+        } as CodePageCommand);
         continue;
       }
     }

@@ -9,7 +9,7 @@ export {
   renderEscPosToCanvas,
 } from "./escpos-renderer.js";
 export { renderTsplToCanvas } from "./tspl-renderer.js";
-export { renderReceipt, renderReceiptToCanvas } from "./canvas-renderer.js";
+export { renderReceipt, renderReceiptToCanvas, buildRenderElements } from "./canvas-renderer.js";
 export type { ReceiptRenderOptions } from "./canvas-renderer.js";
 export {
   DEFAULT_RECEIPT_FONT_ID,

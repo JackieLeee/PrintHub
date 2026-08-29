@@ -6,6 +6,7 @@ import {
   TSPL_CATEGORIES,
   TSPL_COMMANDS,
   type CommandCategory,
+  type CommandDialect,
   type CommandEntry,
 } from "../lib/command-reference";
 
@@ -15,6 +16,15 @@ interface Props {
   onOpenChange?: (open: boolean) => void;
   /** Footer / workbench mode — no nested details toggle. */
   embedded?: boolean;
+}
+
+function DialectBadge({ dialect }: { dialect: CommandDialect }) {
+  const { t } = useLocale();
+  return (
+    <span className={`cmd-ref-dialect cmd-ref-dialect--${dialect}`}>
+      {t.cmdRef.dialects[dialect]}
+    </span>
+  );
 }
 
 function CommandTable({ rows, protocol }: { rows: CommandEntry[]; protocol: "tspl" | "escpos" }) {
@@ -27,6 +37,7 @@ function CommandTable({ rows, protocol }: { rows: CommandEntry[]; protocol: "tsp
       <thead>
         <tr>
           <th>{t.cmdRef.colCommand}</th>
+          <th>{t.cmdRef.colDialect}</th>
           <th>{t.cmdRef.colSyntax}</th>
           <th>{t.cmdRef.colDesc}</th>
         </tr>
@@ -36,6 +47,9 @@ function CommandTable({ rows, protocol }: { rows: CommandEntry[]; protocol: "tsp
           <tr key={row.name}>
             <td>
               <code>{protocol === "tspl" ? row.name : (labels[row.name as keyof typeof labels] ?? row.name)}</code>
+            </td>
+            <td>
+              <DialectBadge dialect={row.dialect} />
             </td>
             <td className="cmd-ref-syntax">{row.syntax}</td>
             <td>{desc[row.descriptionKey as keyof typeof desc] ?? row.descriptionKey}</td>
@@ -77,6 +91,7 @@ export function CommandReference({ protocol, open, onOpenChange, embedded = fals
 
   const body = (
     <div className="cmd-ref-body">
+      {protocol === "escpos" && <p className="cmd-ref-dialect-note">{t.cmdRef.dialectNoteEscpos}</p>}
       {categories.map((category) => (
         <CategoryGroup key={category.titleKey} category={category} source={source} protocol={protocol} />
       ))}

@@ -6,7 +6,7 @@
   "types": "./src/index.ts",
   "scripts": {
     "build": "tsc --noEmit",
-    "test": "tsx --test src/parser.test.ts src/paper-width.test.ts src/raster-detect.test.ts src/encoding.test.ts"
+    "test": "tsx --test src/parser.test.ts src/paper-width.test.ts src/raster-detect.test.ts src/encoding.test.ts src/dialect.test.ts"
   },
   "devDependencies": {
     "tsx": "^4.19.4",

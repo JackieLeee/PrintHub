@@ -1,0 +1,5 @@
+SIZE 40 mm,25 mm
+GAP 2 mm,0
+CLS
+TEXT 10,10,"0",0,1,1,"Minimal TSPL"
+PRINT 1

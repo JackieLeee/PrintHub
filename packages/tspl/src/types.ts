@@ -1,5 +1,10 @@
 export type TsplUnit = "mm" | "inch" | "dot";
 
+export interface TsplCommandSpan {
+  offset: number;
+  length: number;
+}
+
 export type TsplCommand =
   | { kind: "size"; width: number; height: number; unit: TsplUnit }
   | { kind: "gap"; value: number; sensorOffset: number; unit: TsplUnit }
@@ -58,10 +63,15 @@ export type TsplCommand =
   | { kind: "reverse"; x: number; y: number; width: number; height: number }
   | { kind: "print"; copies: number; sets: number }
   | { kind: "speed"; ips: number }
-  | { kind: "density"; level: number };
+  | { kind: "density"; level: number }
+  | { kind: "fileRef"; format: "bmp" | "pcx"; filename: string }
+  | { kind: "codepage"; name: string };
+
+/** Parsed command with byte span in the original payload. */
+export type TsplParsedCommand = TsplCommand & { span: TsplCommandSpan };
 
 export interface TsplParseResult {
-  commands: TsplCommand[];
+  commands: TsplParsedCommand[];
   warnings: string[];
 }
 

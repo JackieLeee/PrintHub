@@ -204,6 +204,39 @@ describe("parseEscPosInspector", () => {
     strictEqual(joined.includes("Print Store"), true);
   });
 
+  it("parses ESC G with on/off parameter", () => {
+    const payload = bytes(
+      0x1b, 0x47, 0x01,
+      ...new TextEncoder().encode("X"),
+      0x1b, 0x47, 0x00,
+    );
+    const { commands } = parseEscPosInspector(payload);
+    const styles = commands.filter((c) => c.category === "style" && c.label === "Double Strike");
+    strictEqual(styles.length, 2);
+    strictEqual(styles[0]?.doubleStrike, true);
+    strictEqual(styles[1]?.doubleStrike, false);
+    strictEqual(commands.some((c) => c.category === "unsupported"), false);
+  });
+
+  it("parses ESC [ character table and skips DLE EOT status polls", () => {
+    const payload = bytes(
+      0x10, 0x04, 0x01,
+      0x1b, 0x40,
+      0x1b, 0x5b, 0x00,
+      ...new TextEncoder().encode("OK"),
+    );
+    const { commands } = parseEscPosInspector(payload);
+    strictEqual(commands.some((c) => c.category === "unsupported"), false);
+    strictEqual(commands.some((c) => c.category === "codePage" && c.label === "Character Table"), true);
+  });
+
+  it("parses GS @ initialize and FS & Chinese mode as code page commands", () => {
+    const payload = bytes(0x1c, 0x26, 0x1d, 0x40, 0x1c, 0x2e);
+    const { commands } = parseEscPosInspector(payload);
+    strictEqual(commands.filter((c) => c.category === "codePage").length, 2);
+    strictEqual(commands.some((c) => c.category === "initialize" && c.description.includes("GS @")), true);
+  });
+
   it("parses ESC i/m cut and legacy GS k barcode", () => {
     const payload = bytes(
       0x1d, 0x68, 0x50,
@@ -263,6 +296,28 @@ describe("parseEscPosInspector", () => {
       true,
     );
     strictEqual(commands.some((c) => c.category === "image"), true);
+    strictEqual(commands.some((c) => c.category === "unsupported"), false);
+  });
+
+  it("parses GS ( N character table and GS ( A print density", () => {
+    const payload = bytes(
+      0x1b, 0x40,
+      0x1d, 0x28, 0x4e, 0x02, 0x00, 0x30, 0x01,
+      0x1d, 0x28, 0x41, 0x02, 0x00, 0x00, 0x40,
+      ...new TextEncoder().encode("Density sample\n"),
+      0x1d, 0x28, 0x4e, 0x01, 0x00, 0x31,
+      0x1b, 0x64, 0x02,
+    );
+    const { commands, warnings } = parseEscPosInspector(payload);
+    strictEqual(warnings.length, 0);
+    strictEqual(
+      commands.some((c) => c.category === "codePage" && c.code === 1),
+      true,
+    );
+    strictEqual(
+      commands.some((c) => c.category === "style" && c.label === "Print Density"),
+      true,
+    );
     strictEqual(commands.some((c) => c.category === "unsupported"), false);
   });
 });

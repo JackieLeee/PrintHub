@@ -1,4 +1,6 @@
 import { isTsplPayload } from "@virt-printer/tspl";
+
+const TSPL_PREVIEW_PADDING_PX = 16;
 import {
   bytesToEscapeNotation,
   looksLikeEscapeWire,
@@ -176,6 +178,108 @@ export async function copyText(text: string): Promise<void> {
 export function defaultPayloadFilename(protocol: string, jobId: string): string {
   const ext = protocol === "tspl" ? "tspl" : "bin";
   return `print-${jobId.slice(0, 8)}.${ext}`;
+}
+
+export function defaultPreviewPngFilename(protocol: string, jobId: string): string {
+  return `print-${jobId.slice(0, 8)}-${protocol}.png`;
+}
+
+export function defaultPreviewPdfFilename(protocol: string, jobId: string): string {
+  return `print-${jobId.slice(0, 8)}-${protocol}.pdf`;
+}
+
+function resolvePreviewImageDataUrl(
+  imageDataUrl: string | null | undefined,
+  canvas: HTMLCanvasElement | null | undefined,
+  crop?: { paddingPx: number },
+): string | null {
+  if (imageDataUrl) return imageDataUrl;
+  if (!canvas) return null;
+
+  if (crop && crop.paddingPx > 0) {
+    const pad = crop.paddingPx;
+    const w = Math.max(1, canvas.width - pad * 2);
+    const h = Math.max(1, canvas.height - pad * 2);
+    if (w < canvas.width || h < canvas.height) {
+      const trimmed = document.createElement("canvas");
+      trimmed.width = w;
+      trimmed.height = h;
+      const ctx = trimmed.getContext("2d");
+      if (ctx) {
+        ctx.drawImage(canvas, pad, pad, w, h, 0, 0, w, h);
+        return trimmed.toDataURL("image/png");
+      }
+    }
+  }
+
+  return canvas.toDataURL("image/png");
+}
+
+function pdfOrientation(widthMm: number, heightMm: number): "portrait" | "landscape" {
+  return widthMm > heightMm ? "landscape" : "portrait";
+}
+
+/** Download preview as PDF — page size matches label/receipt dimensions in mm. */
+export async function downloadPreviewPdf(
+  source: { imageDataUrl?: string | null; canvas?: HTMLCanvasElement | null },
+  filename: string,
+  options: {
+    pageWidthMm?: number;
+    pageHeightMm?: number;
+    cropPaddingPx?: number;
+  } = {},
+): Promise<void> {
+  const cropPaddingPx =
+    options.cropPaddingPx ??
+    (source.canvas && options.pageHeightMm != null ? TSPL_PREVIEW_PADDING_PX : 0);
+  const dataUrl = resolvePreviewImageDataUrl(source.imageDataUrl, source.canvas, {
+    paddingPx: cropPaddingPx,
+  });
+  if (!dataUrl) return;
+
+  const { jsPDF } = await import("jspdf");
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const el = new Image();
+    el.onload = () => resolve(el);
+    el.onerror = () => reject(new Error("Failed to load preview image"));
+    el.src = dataUrl;
+  });
+
+  const pageWidthMm = options.pageWidthMm ?? 80;
+  const pageHeightMm =
+    options.pageHeightMm ?? Math.max(20, (img.height / img.width) * pageWidthMm);
+  const orientation = pdfOrientation(pageWidthMm, pageHeightMm);
+  const pdf = new jsPDF({
+    orientation,
+    unit: "mm",
+    format: [pageWidthMm, pageHeightMm],
+  });
+  const drawW = pdf.internal.pageSize.getWidth();
+  const drawH = pdf.internal.pageSize.getHeight();
+  pdf.addImage(dataUrl, "PNG", 0, 0, drawW, drawH, undefined, "FAST");
+  pdf.save(filename.replace(/\.pdf$/i, "") + ".pdf");
+}
+
+export function downloadDataUrl(dataUrl: string, filename: string): void {
+  const a = document.createElement("a");
+  a.href = dataUrl;
+  a.download = filename;
+  a.click();
+}
+
+export function downloadCanvasPng(canvas: HTMLCanvasElement, filename: string): void {
+  canvas.toBlob(
+    (blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    },
+    "image/png",
+  );
 }
 
 export { looksLikeEscapeWire, looksLikeTsplCommandText, parseEscapeNotation };

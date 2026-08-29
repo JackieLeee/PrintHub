@@ -1,0 +1,14 @@
+SIZE 40 mm,30 mm
+GAP 2 mm,0
+DIRECTION 0
+REFERENCE 0,0
+CLS
+BOX 4,4,312,232,2
+TEXT 10,12,"0",0,1,1,"PrintHub"
+TEXT 10,32,"0",0,1,1,"TSPL Sample Label"
+BAR 10,52,300,2
+REVERSE 10,58,180,14
+TEXT 12,60,"0",0,1,1,"Demo strip"
+BARCODE 10,78,"128",40,1,0,2,4,"1234567890"
+QRCODE 220,78,L,3,A,0,"https://github.com/JackieLeee/PrintHub"
+PRINT 1

@@ -1,0 +1,7 @@
+SIZE 40 mm,30 mm
+GAP 2 mm,0
+DIRECTION 0
+CLS
+BLOCK 10,10,300,120,"0",0,1,1,2,"Multi-line block text for shipping label. Line two wraps inside the box."
+TEXT 10,140,"0",0,1,1,"Footer line"
+PRINT 1

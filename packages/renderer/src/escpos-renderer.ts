@@ -28,7 +28,11 @@ export async function renderEscPosPreview(
   const { commands, paperWidth, warnings } = parseEscPosInspector(payload, widthPx);
   const fontFamily = receiptFontFamily(options.receiptFontId);
   const layout = normalizeReceiptLayout(options.receiptLayout);
-  const result = await renderReceipt(commands, paperWidth, { fontFamily, layout });
+  const result = await renderReceipt(commands, paperWidth, {
+    fontFamily,
+    layout,
+    highlightCommandId: options.highlightCommandId,
+  });
   return {
     imageDataUrl: result.imageDataUrl,
     paperWidth,
@@ -63,5 +67,9 @@ export async function renderEscPosToCanvas(
   const { commands, paperWidth } = parseEscPosInspector(payload, widthPx);
   const fontFamily = receiptFontFamily(options.receiptFontId);
   const layout = normalizeReceiptLayout(options.receiptLayout);
-  return renderReceiptToCanvas(commands, paperWidth, { fontFamily, layout });
+  return renderReceiptToCanvas(commands, paperWidth, {
+    fontFamily,
+    layout,
+    highlightCommandId: options.highlightCommandId,
+  });
 }

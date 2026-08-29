@@ -1,6 +1,6 @@
 {
   "name": "PrintHub",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "scripts": {
     "dev": "pnpm build:web && pnpm --filter @virt-printer/bridge dev",
@@ -14,7 +14,8 @@
     "dist:desktop:win": "pnpm build:web:desktop && pnpm --filter @virt-printer/shared build && pnpm --filter @virt-printer/tspl build && pnpm --filter @virt-printer/bridge build && pnpm --filter @virt-printer/desktop dist:win",
     "start": "pnpm build:web && pnpm --filter @virt-printer/bridge start",
     "build": "turbo build",
-    "lint": "turbo lint"
+    "lint": "turbo lint",
+    "test": "pnpm --filter @virt-printer/escpos test && pnpm --filter @virt-printer/fixtures test && pnpm --filter @virt-printer/analyze test"
   },
   "devDependencies": {
     "turbo": "^2.5.4",

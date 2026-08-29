@@ -1,0 +1,226 @@
+{
+  "version": 1,
+  "fixtures": [
+    {
+      "id": "escpos-demo-receipt",
+      "file": "escpos/demo-receipt.bin",
+      "protocol": "escpos",
+      "tags": ["demo", "barcode", "qr"],
+      "expect": {
+        "minCommands": 8,
+        "maxUnsupported": 0,
+        "minTextCommands": 3,
+        "paperWidth": 576
+      }
+    },
+    {
+      "id": "escpos-80mm-gbk-text",
+      "file": "escpos/80mm-gbk-text.bin",
+      "protocol": "escpos",
+      "tags": ["gbk", "80mm", "real-world"],
+      "expect": {
+        "minCommands": 20,
+        "maxUnsupported": 0,
+        "minTextCommands": 15,
+        "paperWidth": 576
+      }
+    },
+    {
+      "id": "escpos-58mm-gbk-text",
+      "file": "escpos/58mm-gbk-text.bin",
+      "protocol": "escpos",
+      "tags": ["gbk", "58mm", "real-world"],
+      "expect": {
+        "minCommands": 20,
+        "maxUnsupported": 0,
+        "minTextCommands": 15,
+        "paperWidth": 384
+      }
+    },
+    {
+      "id": "escpos-minimal-text-cut",
+      "file": "escpos/minimal-text-cut.bin",
+      "protocol": "escpos",
+      "tags": ["minimal"],
+      "expect": {
+        "minCommands": 3,
+        "maxUnsupported": 0,
+        "minTextCommands": 1,
+        "paperWidth": 384
+      }
+    },
+    {
+      "id": "escpos-align-bold-cut",
+      "file": "escpos/align-bold-cut.bin",
+      "protocol": "escpos",
+      "tags": ["minimal", "style"],
+      "expect": {
+        "minCommands": 5,
+        "maxUnsupported": 0,
+        "minTextCommands": 1,
+        "paperWidth": 384
+      }
+    },
+    {
+      "id": "escpos-restaurant-utf8",
+      "file": "escpos/restaurant-utf8.bin",
+      "protocol": "escpos",
+      "tags": ["utf8", "real-world", "restaurant"],
+      "expect": {
+        "minCommands": 12,
+        "maxUnsupported": 0,
+        "minTextCommands": 8,
+        "paperWidth": 384
+      }
+    },
+    {
+      "id": "escpos-retail-gbk-receipt",
+      "file": "escpos/retail-gbk-receipt.bin",
+      "protocol": "escpos",
+      "tags": ["gbk", "retail", "barcode", "qr", "status-poll"],
+      "expect": {
+        "minCommands": 18,
+        "maxUnsupported": 0,
+        "minTextCommands": 4,
+        "paperWidth": 576
+      }
+    },
+    {
+      "id": "escpos-raster-logo-cut",
+      "file": "escpos/raster-logo-cut.bin",
+      "protocol": "escpos",
+      "tags": ["raster", "image", "cut"],
+      "expect": {
+        "minCommands": 7,
+        "maxUnsupported": 0,
+        "minTextCommands": 2,
+        "paperWidth": 384
+      }
+    },
+    {
+      "id": "escpos-star-image-receipt",
+      "file": "escpos/star-image-receipt.bin",
+      "protocol": "escpos",
+      "tags": ["esc-star", "image", "legacy"],
+      "expect": {
+        "minCommands": 5,
+        "maxUnsupported": 0,
+        "minTextCommands": 1,
+        "paperWidth": 384
+      }
+    },
+    {
+      "id": "escpos-cash-drawer-sale",
+      "file": "escpos/cash-drawer-sale.bin",
+      "protocol": "escpos",
+      "tags": ["cash-drawer", "retail"],
+      "expect": {
+        "minCommands": 5,
+        "maxUnsupported": 0,
+        "minTextCommands": 2,
+        "paperWidth": 384
+      }
+    },
+    {
+      "id": "escpos-style-mix-receipt",
+      "file": "escpos/style-mix-receipt.bin",
+      "protocol": "escpos",
+      "tags": ["style", "codepage", "gs-init"],
+      "expect": {
+        "minCommands": 10,
+        "maxUnsupported": 0,
+        "minTextCommands": 3,
+        "paperWidth": 384
+      }
+    },
+    {
+      "id": "escpos-charset-density",
+      "file": "escpos/escpos-charset-density.bin",
+      "protocol": "escpos",
+      "tags": ["gs-n", "gs-a", "density"],
+      "expect": {
+        "minCommands": 5,
+        "maxUnsupported": 0,
+        "minTextCommands": 1,
+        "paperWidth": 384
+      }
+    },
+    {
+      "id": "tspl-demo-label",
+      "file": "tspl/demo-label.tspl",
+      "protocol": "tspl",
+      "tags": ["demo", "barcode", "qr"],
+      "expect": {
+        "minCommands": 10,
+        "maxUnsupported": 0,
+        "maxWarnings": 0
+      }
+    },
+    {
+      "id": "tspl-minimal-text",
+      "file": "tspl/minimal-text.tspl",
+      "protocol": "tspl",
+      "tags": ["minimal"],
+      "expect": {
+        "minCommands": 4,
+        "maxUnsupported": 0,
+        "maxWarnings": 0
+      }
+    },
+    {
+      "id": "tspl-barcode-label",
+      "file": "tspl/barcode-label.tspl",
+      "protocol": "tspl",
+      "tags": ["barcode"],
+      "expect": {
+        "minCommands": 4,
+        "maxUnsupported": 0,
+        "maxWarnings": 0
+      }
+    },
+    {
+      "id": "tspl-block-label",
+      "file": "tspl/block-label.tspl",
+      "protocol": "tspl",
+      "tags": ["block", "text"],
+      "expect": {
+        "minCommands": 5,
+        "maxUnsupported": 0,
+        "maxWarnings": 0
+      }
+    },
+    {
+      "id": "tspl-bitmap-label",
+      "file": "tspl/bitmap-label.tspl",
+      "protocol": "tspl",
+      "tags": ["bitmap", "barcode"],
+      "expect": {
+        "minCommands": 5,
+        "maxUnsupported": 0,
+        "maxWarnings": 0
+      }
+    },
+    {
+      "id": "tspl-shapes-label",
+      "file": "tspl/shapes-label.tspl",
+      "protocol": "tspl",
+      "tags": ["shapes", "meta"],
+      "expect": {
+        "minCommands": 8,
+        "maxUnsupported": 0,
+        "maxWarnings": 0
+      }
+    },
+    {
+      "id": "tspl-warehouse-label",
+      "file": "tspl/warehouse-label.tspl",
+      "protocol": "tspl",
+      "tags": ["warehouse", "bline", "qr", "barcode"],
+      "expect": {
+        "minCommands": 10,
+        "maxUnsupported": 0,
+        "maxWarnings": 0
+      }
+    }
+  ]
+}

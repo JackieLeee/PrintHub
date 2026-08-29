@@ -9,13 +9,18 @@
 
 LAN **virtual printer** for **ESC/POS** receipts and **TSPL** labels — receive raw TCP print jobs, preview in the browser, replay history, and debug without hardware.
 
+**New in v1.1.0:** Inspector ↔ preview linkage · PNG/PDF export · `@virt-printer/analyze` for agents · Star dialect detection · expanded command reference & fixture corpus.
+
 ## Features
 
 | | |
 |---|---|
-| **Preview** | ESC/POS & TSPL canvas rendering; last **50** jobs with export |
+| **Inspector** | Grouped command blocks (Setup / Preview / composite) linked to canvas highlight |
+| **Export** | PNG & PDF (label-sized), Hex / Base64 / commands / raw payload |
+| **Analyze** | `printhub-analyze` CLI — JSON `commands`, `blocks`, `summary` for agents & CI |
+| **Preview** | ESC/POS & TSPL canvas rendering; Star dialect badge; last **50** jobs |
 | **Debug** | Samples + File / Hex / Base64 — works **offline** without Bridge |
-| **Workbench** | Virtual printer · Network & ports · Debug print · Printer sim |
+| **Workbench** | Virtual printer · Network & ports · Debug print · Printer sim · Command ref |
 | **Desktop** | Electron + Bridge, tray, EN/中文, optional LAN HTTP |
 | **Discovery** | mDNS `_pdl-datastream._tcp` on **9100** |
 
@@ -61,7 +66,9 @@ printf '\x1b@\x1ba\x01Hello PrintHub\n\x1dV\x00' | nc -N localhost 9100
 
 ![Architecture](./docs/assets/architecture.en.png)
 
-`apps/desktop` · `apps/web` · `packages/bridge` · `packages/{escpos,tspl,renderer}` · `packages/{shared,relay-client}`
+`apps/desktop` · `apps/web` · `packages/bridge` · `packages/{escpos,tspl,renderer,analyze,fixtures}` · `packages/{shared,relay-client}`
+
+**Analyze (CLI):** `pnpm exec printhub-analyze path/to/job.bin`
 
 ---
 

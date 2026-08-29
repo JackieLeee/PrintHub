@@ -1,18 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { StoredJob } from "../App";
-import { isTsplPayload } from "@virt-printer/tspl";
+import { parseEscPosInspector, detectEscPosDialect, type EscPosDialect } from "@virt-printer/escpos";
+import { isTsplPayload, parseTspl, parseLabelSizeMm } from "@virt-printer/tspl";
+import { buildRenderElements, renderEscPosPreview, renderTsplToCanvas } from "@virt-printer/renderer";
 import { useLocale } from "../i18n/context";
 import { formatDuration } from "../lib/format-duration";
-import { showToast } from "../lib/toast";
-import {
-  copyText,
-  defaultPayloadFilename,
-  downloadPayload,
-  payloadToBase64,
-  payloadToCommands,
-  payloadCommandsAreRoundTrip,
-  payloadToHexCompact,
-} from "../lib/payload-export";
+import { ExportDialog } from "./ExportDialog";
+import { InspectorPanel } from "./InspectorPanel";
+import type { InspectorBlock } from "../lib/inspector-blocks";
 import {
   MirrorHorizontalIcon,
   MirrorVerticalIcon,
@@ -28,6 +23,7 @@ interface Props {
   labelSize?: string | null;
   canvas?: HTMLCanvasElement | null;
   warnings?: string[];
+  receiptFontId?: string;
 }
 
 interface PreviewViewTransform {
@@ -57,14 +53,74 @@ export function PreviewPanel({
   labelSize = null,
   canvas = null,
   warnings = [],
+  receiptFontId,
 }: Props) {
   const { t, format } = useLocale();
   const previewHostRef = useRef<HTMLDivElement>(null);
+  const previewMountRef = useRef<HTMLDivElement>(null);
   const [view, setView] = useState<PreviewViewTransform>(DEFAULT_VIEW);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [selectedBlock, setSelectedBlock] = useState<InspectorBlock | null>(null);
+  const highlightCommandId = selectedBlock?.highlightId ?? null;
+  const [linkedImageDataUrl, setLinkedImageDataUrl] = useState<string | null>(null);
+  const [linkedCanvas, setLinkedCanvas] = useState<HTMLCanvasElement | null>(null);
+
+  const protocol =
+    job?.protocol === "tspl" || (job != null && isTsplPayload(job.payload)) ? "tspl" : job?.protocol ?? "escpos";
+
+  const escPosDialect: EscPosDialect | null =
+    protocol === "escpos" && job ? detectEscPosDialect(job.payload) : null;
+
+  const labelSizeMm = useMemo(() => {
+    if (!job || protocol !== "tspl") return null;
+    return parseLabelSizeMm(parseTspl(job.payload).commands);
+  }, [job, protocol]);
 
   useEffect(() => {
     setView(DEFAULT_VIEW);
+    setSelectedBlock(null);
   }, [job?.id]);
+
+  useEffect(() => {
+    if (!job || !highlightCommandId) {
+      setLinkedImageDataUrl(null);
+      setLinkedCanvas(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    if (protocol === "escpos") {
+      void renderEscPosPreview(job.payload, { receiptFontId, highlightCommandId }).then((result) => {
+        if (!cancelled) setLinkedImageDataUrl(result.imageDataUrl);
+      });
+    } else if (protocol === "tspl") {
+      const parsed = parseTspl(job.payload);
+      const nextCanvas = renderTsplToCanvas(parsed.commands, { highlightCommandId });
+      if (!cancelled) setLinkedCanvas(nextCanvas);
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [job, highlightCommandId, protocol, receiptFontId]);
+
+  useEffect(() => {
+    if (!job || !highlightCommandId || protocol !== "escpos") return;
+    const width = paperWidth ?? 384;
+    const { commands } = parseEscPosInspector(job.payload, width);
+    const elements = buildRenderElements(commands, width);
+    const element = elements.find(
+      (item) =>
+        item.commandId === highlightCommandId || item.mergedCommandIds?.includes(highlightCommandId),
+    );
+    if (element && previewMountRef.current) {
+      previewMountRef.current.scrollTo({ top: Math.max(0, element.y - 24), behavior: "smooth" });
+    }
+  }, [job, highlightCommandId, protocol, paperWidth]);
+
+  const displayImageDataUrl = linkedImageDataUrl ?? imageDataUrl;
+  const displayCanvas = linkedCanvas ?? canvas;
 
   useEffect(() => {
     const host = previewHostRef.current;
@@ -72,11 +128,11 @@ export function PreviewPanel({
 
     host.replaceChildren();
 
-    if (imageDataUrl) {
+    if (displayImageDataUrl) {
       const shell = document.createElement("div");
       shell.className = "receipt-shell";
       const img = document.createElement("img");
-      img.src = imageDataUrl;
+      img.src = displayImageDataUrl;
       img.alt = "Receipt preview";
       img.className = "receipt-image";
       shell.appendChild(img);
@@ -84,14 +140,14 @@ export function PreviewPanel({
       return;
     }
 
-    if (canvas) {
+    if (displayCanvas) {
       const wrap = document.createElement("div");
       wrap.className = "tspl-preview-mount";
-      canvas.className = "preview-canvas";
-      wrap.appendChild(canvas);
+      displayCanvas.className = "preview-canvas";
+      wrap.appendChild(displayCanvas);
       host.appendChild(wrap);
     }
-  }, [job, job?.id, imageDataUrl, canvas]);
+  }, [job, job?.id, displayImageDataUrl, displayCanvas]);
 
   const viewStyle = useMemo(() => previewTransformStyle(view), [view]);
   const viewAdjusted = view.rotation !== 0 || view.mirrorH || view.mirrorV;
@@ -100,52 +156,14 @@ export function PreviewPanel({
     return <div className="empty">{t.preview.empty}</div>;
   }
 
-  const filename = defaultPayloadFilename(job.protocol, job.id);
-  const previewReady = Boolean(imageDataUrl || canvas);
-
-  async function onCopyHex() {
-    try {
-      await copyText(payloadToHexCompact(job!.payload));
-      showToast(t.export.copiedHex, "ok");
-    } catch {
-      showToast(t.export.copyFailed, "err");
-    }
-  }
-
-  async function onCopyBase64() {
-    try {
-      await copyText(payloadToBase64(job!.payload));
-      showToast(t.export.copiedBase64, "ok");
-    } catch {
-      showToast(t.export.copyFailed, "err");
-    }
-  }
-
-  async function onCopyCommands() {
-    try {
-      const text = payloadToCommands(job!.payload);
-      await copyText(text);
-      showToast(
-        payloadCommandsAreRoundTrip(job!.payload) ? t.export.copiedCommands : t.export.copiedCommandsPartial,
-        "ok",
-      );
-    } catch {
-      showToast(t.export.copyFailed, "err");
-    }
-  }
-
-  function onDownload() {
-    downloadPayload(job!.payload, filename);
-    showToast(t.export.downloaded, "ok");
-  }
-
-  const protocol = job.protocol === "tspl" || isTsplPayload(job.payload) ? "tspl" : job.protocol;
+  const previewReady = Boolean(displayImageDataUrl || displayCanvas);
 
   return (
     <div className="preview-wrap">
       <div className="preview-toolbar">
         <div className="preview-meta">
           <span className={`tag ${protocol}`}>{protocol.toUpperCase()}</span>
+          {escPosDialect === "star" && <span className="tag star">{t.preview.dialectStar}</span>}
           <span>{job.sourceIp}</span>
           <span>{job.byteLength} bytes</span>
           {paperWidth != null && protocol === "escpos" && (
@@ -162,20 +180,9 @@ export function PreviewPanel({
         </div>
 
         <div className="preview-toolbar-actions">
-          <div className="segmented-toolbar" role="group" aria-label={t.export.download}>
-            <button type="button" className="segmented-btn" onClick={onDownload}>
-              {t.export.download}
-            </button>
-            <button type="button" className="segmented-btn" onClick={() => void onCopyHex()}>
-              {t.export.copyHex}
-            </button>
-            <button type="button" className="segmented-btn" onClick={() => void onCopyBase64()}>
-              {t.export.copyBase64}
-            </button>
-            <button type="button" className="segmented-btn" onClick={() => void onCopyCommands()}>
-              {t.export.copyCommands}
-            </button>
-          </div>
+          <button type="button" className="btn-sm export-open-btn" onClick={() => setExportOpen(true)}>
+            {t.export.open}
+          </button>
 
           {previewReady && (
             <div className="segmented-toolbar segmented-toolbar--icons" role="group" aria-label={t.preview.resetView}>
@@ -236,7 +243,7 @@ export function PreviewPanel({
       </div>
 
       {warnings.length > 0 && (
-        <details className="parse-warnings">
+        <details className="disclosure-block parse-warnings">
           <summary>{format(t.preview.warnings, { n: warnings.length })}</summary>
           <ul>
             {warnings.map((w, i) => (
@@ -245,7 +252,16 @@ export function PreviewPanel({
           </ul>
         </details>
       )}
-      <div className={`preview-mount${viewAdjusted ? " preview-mount--transformed" : ""}`}>
+      <InspectorPanel
+        payload={job.payload}
+        protocol={protocol}
+        selectedBlockId={selectedBlock?.id ?? null}
+        onSelectBlock={setSelectedBlock}
+      />
+      <div
+        ref={previewMountRef}
+        className={`preview-mount${viewAdjusted ? " preview-mount--transformed" : ""}${highlightCommandId ? " preview-mount--linked" : ""}`}
+      >
         <div
           ref={previewHostRef}
           className="preview-host preview-view-inner"
@@ -253,6 +269,20 @@ export function PreviewPanel({
         />
         {!previewReady && <div className="preview-loading">{t.preview.rendering}</div>}
       </div>
+
+      <ExportDialog
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        payload={job.payload}
+        protocol={protocol}
+        jobId={job.id}
+        imageDataUrl={displayImageDataUrl}
+        canvas={displayCanvas}
+        previewReady={previewReady}
+        pageWidthMm={labelSizeMm?.widthMm ?? ((paperWidth ?? 384) >= 576 ? 80 : 58)}
+        pageHeightMm={labelSizeMm?.heightMm}
+        cropPaddingPx={protocol === "tspl" && displayCanvas ? 16 : undefined}
+      />
     </div>
   );
 }

@@ -9,13 +9,18 @@
 
 局域网 **虚拟打印机**，接收 **ESC/POS** 小票与 **TSPL** 标签原始字节流 — 浏览器实时预览、历史回放与调试，无需实体打印机。
 
+**v1.1.0 新增：** Inspector 与预览联动 · PNG/PDF 导出 · `@virt-printer/analyze` Agent API · Star 方言检测 · 命令手册与 fixtures 回归库。
+
 ## 功能
 
 | | |
 |---|---|
-| **预览** | ESC/POS & TSPL Canvas 渲染；最近 **50** 条任务，支持导出 |
+| **检查器** | 指令块分组（Setup / Preview / 复合），点击高亮预览区域 |
+| **导出** | PNG / PDF（标签物理尺寸）、Hex / Base64 / 指令 / 原始文件 |
+| **Analyze** | `printhub-analyze` CLI — JSON 结构化输出，供 Agent 与 CI 使用 |
+| **预览** | ESC/POS & TSPL Canvas；Star 方言徽章；最近 **50** 条任务 |
 | **调试** | Sample + File / Hex / Base64 — **可离线**，无需 Bridge |
-| **工作台** | 虚拟打印机 · 网络与端口 · 调试打印 · 打印机模拟 |
+| **工作台** | 虚拟打印机 · 网络与端口 · 调试打印 · 打印机模拟 · 命令手册 |
 | **桌面端** | Electron 集成 Bridge、托盘、中/EN、可选局域网 HTTP |
 | **发现** | mDNS `_pdl-datastream._tcp` · 端口 **9100** |
 
@@ -61,7 +66,9 @@ printf '\x1b@\x1ba\x01Hello PrintHub\n\x1dV\x00' | nc -N localhost 9100
 
 ![架构图](./docs/assets/architecture.zh.png)
 
-`apps/desktop` · `apps/web` · `packages/bridge` · `packages/{escpos,tspl,renderer}` · `packages/{shared,relay-client}`
+`apps/desktop` · `apps/web` · `packages/bridge` · `packages/{escpos,tspl,renderer,analyze,fixtures}` · `packages/{shared,relay-client}`
+
+**Analyze（CLI）：** `pnpm exec printhub-analyze path/to/job.bin`
 
 ---
 

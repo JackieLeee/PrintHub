@@ -1,7 +1,9 @@
 import type { TsplCommand, TsplLabelMeta } from "@virt-printer/tspl";
 import { resolveTsplLabelMeta, tsplBitmapForPreview } from "@virt-printer/tspl";
 import { drawQrMatrix, drawTsplBarcodePreview } from "./barcode.js";
+import { code128WidthDots } from "./code128.js";
 import type { QrEcLevel } from "./qr-encode.js";
+import QRCode from "qrcode";
 import { drawTscText, tscTextHeightDots, tscTextWidthDots } from "./tsc-font.js";
 import type { RenderOptions } from "./types.js";
 import { drawRasterBitmap } from "./raster.js";
@@ -78,6 +80,129 @@ function wrapBlockText(content: string, maxWidthPx: number, font: string, xMul: 
   return lines.length > 0 ? lines : [content];
 }
 
+function parseTsplHighlightIndex(highlightCommandId: string | null | undefined): number {
+  if (!highlightCommandId?.startsWith("tspl-")) return -1;
+  const idx = Number.parseInt(highlightCommandId.slice(5), 10);
+  return Number.isFinite(idx) ? idx : -1;
+}
+
+function tsplQrPixelSize(data: string, cellWidth: number): number {
+  const modulePx = Math.max(2, cellWidth);
+  const qr = QRCode.create(data, { errorCorrectionLevel: tsplQrEcLevel("M") });
+  return qr.modules.size * modulePx + 8;
+}
+
+interface TsplBounds {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+function tsplCommandBounds(cmd: TsplCommand, ox: number, oy: number): TsplBounds | null {
+  switch (cmd.kind) {
+    case "text":
+      return {
+        x: ox + cmd.x * PREVIEW_SCALE,
+        y: oy + cmd.y * PREVIEW_SCALE,
+        w: tscTextWidthDots(cmd.content, cmd.font, cmd.xMul) * PREVIEW_SCALE,
+        h: tscTextHeightDots(cmd.font, cmd.yMul) * PREVIEW_SCALE,
+      };
+    case "block":
+      return {
+        x: ox + cmd.x * PREVIEW_SCALE,
+        y: oy + cmd.y * PREVIEW_SCALE,
+        w: cmd.width * PREVIEW_SCALE,
+        h: cmd.height * PREVIEW_SCALE,
+      };
+    case "barcode": {
+      const x = ox + cmd.x * PREVIEW_SCALE;
+      const y = oy + cmd.y * PREVIEW_SCALE;
+      const fmt = cmd.format.replace(/"/g, "").toLowerCase();
+      const w =
+        fmt === "128" || fmt === "code128"
+          ? code128WidthDots(cmd.data, cmd.narrow)
+          : Math.max(cmd.data.length * cmd.narrow * 11, cmd.narrow * 40);
+      const h = cmd.height + (cmd.readable === 0 ? 0 : 14);
+      return { x, y, w, h };
+    }
+    case "qrcode": {
+      const size = tsplQrPixelSize(cmd.data, Math.max(1, cmd.cellWidth));
+      return {
+        x: ox + cmd.x * PREVIEW_SCALE,
+        y: oy + cmd.y * PREVIEW_SCALE,
+        w: size,
+        h: size,
+      };
+    }
+    case "bitmap":
+      return {
+        x: ox + cmd.x * PREVIEW_SCALE,
+        y: oy + cmd.y * PREVIEW_SCALE,
+        w: cmd.width * 8 * PREVIEW_SCALE,
+        h: cmd.height * PREVIEW_SCALE,
+      };
+    case "box":
+      return {
+        x: ox + cmd.x * PREVIEW_SCALE,
+        y: oy + cmd.y * PREVIEW_SCALE,
+        w: (cmd.xEnd - cmd.x) * PREVIEW_SCALE,
+        h: (cmd.yEnd - cmd.y) * PREVIEW_SCALE,
+      };
+    case "bar":
+      return {
+        x: ox + cmd.x * PREVIEW_SCALE,
+        y: oy + cmd.y * PREVIEW_SCALE,
+        w: cmd.width * PREVIEW_SCALE,
+        h: cmd.height * PREVIEW_SCALE,
+      };
+    case "circle": {
+      const d = cmd.diameter * PREVIEW_SCALE;
+      return {
+        x: ox + (cmd.x - cmd.diameter / 2) * PREVIEW_SCALE,
+        y: oy + (cmd.y - cmd.diameter / 2) * PREVIEW_SCALE,
+        w: d,
+        h: d,
+      };
+    }
+    case "ellipse":
+      return {
+        x: ox + cmd.x * PREVIEW_SCALE,
+        y: oy + cmd.y * PREVIEW_SCALE,
+        w: cmd.width * PREVIEW_SCALE,
+        h: cmd.height * PREVIEW_SCALE,
+      };
+    case "reverse":
+      return {
+        x: ox + cmd.x * PREVIEW_SCALE,
+        y: oy + cmd.y * PREVIEW_SCALE,
+        w: cmd.width * PREVIEW_SCALE,
+        h: cmd.height * PREVIEW_SCALE,
+      };
+    default:
+      return null;
+  }
+}
+
+function drawTsplHighlight(
+  ctx: CanvasRenderingContext2D,
+  cmd: TsplCommand,
+  ox: number,
+  oy: number,
+): void {
+  const bounds = tsplCommandBounds(cmd, ox, oy);
+  if (!bounds) return;
+
+  const pad = 3;
+  ctx.save();
+  ctx.fillStyle = "rgba(255, 214, 102, 0.45)";
+  ctx.strokeStyle = "#f5a623";
+  ctx.lineWidth = 2;
+  ctx.fillRect(bounds.x - pad, bounds.y - pad, bounds.w + pad * 2, bounds.h + pad * 2);
+  ctx.strokeRect(bounds.x - pad, bounds.y - pad, bounds.w + pad * 2, bounds.h + pad * 2);
+  ctx.restore();
+}
+
 export function renderTsplToCanvas(
   commands: TsplCommand[],
   options: RenderOptions = {},
@@ -85,6 +210,8 @@ export function renderTsplToCanvas(
   const padding = options.paddingPx ?? 16;
   const bg = options.background ?? "#ffffff";
   const fg = options.foreground ?? "#111111";
+  const highlightIdx = parseTsplHighlightIndex(options.highlightCommandId);
+  const highlightCmd = highlightIdx >= 0 ? commands[highlightIdx] : null;
 
   const meta = resolveTsplLabelMeta(commands);
   const drawList = drawableCommands(commands);
@@ -109,6 +236,9 @@ export function renderTsplToCanvas(
     ctx.strokeStyle = fg;
 
     for (const cmd of drawList) {
+      if (highlightCmd === cmd) {
+        drawTsplHighlight(ctx, cmd, ox, oy);
+      }
       drawTsplCommand(ctx, cmd, ox, oy, fg);
     }
   });

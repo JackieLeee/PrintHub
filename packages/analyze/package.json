@@ -1,0 +1,22 @@
+{
+  "name": "@virt-printer/analyze",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "bin": {
+    "printhub-analyze": "./src/cli.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "test": "tsx --test src/analyze.test.ts"
+  },
+  "dependencies": {
+    "@virt-printer/escpos": "workspace:*",
+    "@virt-printer/tspl": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "name": "@virt-printer/fixtures",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "generate": "tsx scripts/generate-fixtures.ts",
+    "test": "tsx --test src/run-fixtures.test.ts src/inspector-blocks.test.ts",
+    "test:update-snapshots": "UPDATE_SNAPSHOTS=1 tsx --test src/run-fixtures.test.ts"
+  },
+  "dependencies": {
+    "@virt-printer/analyze": "workspace:*",
+    "@virt-printer/escpos": "workspace:*",
+    "@virt-printer/tspl": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  }
+}

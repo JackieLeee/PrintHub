@@ -1,6 +1,8 @@
 export type {
   TsplCommand,
+  TsplCommandSpan,
   TsplLabelMeta,
+  TsplParsedCommand,
   TsplParseResult,
   TsplUnit,
 } from "./types.js";
@@ -14,7 +16,7 @@ export {
   toDots,
   tokenizeLine,
 } from "./utils.js";
-export { formatLabelSize } from "./label-size.js";
+export { formatLabelSize, parseLabelSizeMm } from "./label-size.js";
 export { resolveTsplLabelMeta } from "./meta.js";
 export { isTsplPayload } from "./detect.js";
 export { parseBitmapAtOffset } from "./bitmap-scan.js";

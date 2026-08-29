@@ -396,6 +396,7 @@ export function App() {
             labelSize={preview.labelSize}
             canvas={preview.canvas}
             warnings={preview.warnings}
+            receiptFontId={receiptFontId}
           />
         </main>
 

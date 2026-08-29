@@ -137,6 +137,7 @@ export interface Translations {
     mirrorH: string;
     mirrorV: string;
     resetView: string;
+    dialectStar: string;
   };
   samples: {
     previewEscPos: string;
@@ -144,7 +145,10 @@ export interface Translations {
     printing: string;
   };
   export: {
+    open: string;
     download: string;
+    downloadPng: string;
+    downloadPdf: string;
     copyHex: string;
     copyBase64: string;
     copyCommands: string;
@@ -153,7 +157,91 @@ export interface Translations {
     copiedCommands: string;
     copiedCommandsPartial: string;
     downloaded: string;
+    downloadedPng: string;
+    downloadedPdf: string;
+    downloadFailed: string;
     copyFailed: string;
+  };
+  exportDialog: {
+    title: string;
+    subtitle: string;
+    tabHex: string;
+    tabBase64: string;
+    tabCommands: string;
+    tabRaw: string;
+    tabPng: string;
+    tabPdf: string;
+    copy: string;
+    download: string;
+    close: string;
+    rawFilename: string;
+    rawProtocol: string;
+    rawSize: string;
+    rawBytes: string;
+    rawDescription: string;
+  };
+  inspector: {
+    summary: string;
+    payloadBytes: string;
+    unsupportedBytes: string;
+    warnings: string;
+    filterLabel: string;
+    filterAll: string;
+    filterIssues: string;
+    colCategory: string;
+    colLabel: string;
+    colOffset: string;
+    colLength: string;
+    colDetail: string;
+    linkHint: string;
+    linkRow: string;
+    metaRow: string;
+    blockCount: string;
+    badgeSetup: string;
+    badgeGroup: string;
+    badgePreview: string;
+    expandGroup: string;
+    expandSetup: string;
+    setupMulti: string;
+    blockText: string;
+    blockQrCode: string;
+    blockBarcode: string;
+    blockReverseStrip: string;
+    blockRasterImage: string;
+    cmdCategory: {
+      initialize: string;
+      alignment: string;
+      font: string;
+      style: string;
+      text: string;
+      lineFeed: string;
+      lineSpacing: string;
+      feed: string;
+      cut: string;
+      image: string;
+      rasterImage: string;
+      barcode: string;
+      qrCode: string;
+      codePage: string;
+      cashDrawer: string;
+      unsupported: string;
+      size: string;
+      gap: string;
+      direction: string;
+      reference: string;
+      cls: string;
+      print: string;
+      box: string;
+      bar: string;
+      reverse: string;
+      qrcode: string;
+      bitmap: string;
+      block: string;
+      circle: string;
+      ellipse: string;
+      fileRef: string;
+      codepage: string;
+    };
   };
   rawPrint: {
     tabFile: string;
@@ -195,8 +283,15 @@ export interface Translations {
     titleTspl: string;
     titleEscpos: string;
     colCommand: string;
+    colDialect: string;
     colSyntax: string;
     colDesc: string;
+    dialectNoteEscpos: string;
+    dialects: {
+      standard: string;
+      star: string;
+      common: string;
+    };
     categories: {
       labelSetup: string;
       contentGraphics: string;
@@ -206,6 +301,7 @@ export interface Translations {
       textStyle: string;
       barcodeImage: string;
       deviceControl: string;
+      starExtensions: string;
     };
     labels: Record<string, string>;
     desc: Record<string, string>;
