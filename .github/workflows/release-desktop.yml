@@ -91,6 +91,17 @@ jobs:
             gh release create "$TAG" --title "$TAG" --notes-file "$NOTES"
           fi
 
+          # Replace installer assets each release (drop universal, legacy names, etc.)
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            while IFS= read -r asset; do
+              [ -n "$asset" ] || continue
+              if [[ "$asset" == *.dmg || "$asset" == *.exe ]]; then
+                echo "Removing stale asset: $asset"
+                gh release delete-asset "$TAG" "$asset" --yes || true
+              fi
+            done < <(gh release view "$TAG" --json assets -q '.assets[].name')
+          fi
+
           mapfile -d '' files < <(find release-assets -type f \( -name '*.dmg' -o -name '*.exe' \) -print0)
           if [ "${#files[@]}" -eq 0 ]; then
             echo "::error::No .dmg or .exe artifacts found under release-assets/"

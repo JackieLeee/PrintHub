@@ -32,9 +32,9 @@ LAN **virtual printer** for **ESC/POS** receipts and **TSPL** labels — receive
 
 | Platform | File |
 |----------|------|
-| macOS (Apple Silicon) | `*-arm64.dmg` ~110 MB |
-| macOS (Intel) | `*-x64.dmg` ~110 MB |
-| Windows x64 | `PrintHub Setup *.exe` ~99 MB |
+| macOS (Apple Silicon) | `*-mac-arm64.dmg` ~110 MB |
+| macOS (Intel) | `*-mac-x64.dmg` ~110 MB |
+| Windows x64 | `*-win-x64.exe` ~99 MB |
 
 > **Unsigned builds.** macOS: right-click → **Open**. Windows: **More info → Run anyway**.
 
