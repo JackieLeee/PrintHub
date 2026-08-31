@@ -33,7 +33,7 @@
 | 平台 | 文件 |
 |------|------|
 | macOS（Apple 芯片） | `*-arm64.dmg` ~110 MB |
-| macOS（Apple 芯片 + Intel） | `*-universal.dmg` ~200 MB |
+| macOS（Intel） | `*-x64.dmg` ~110 MB |
 | Windows x64 | `PrintHub Setup *.exe` ~99 MB |
 
 > **未签名。** macOS：**右键 → 打开**。Windows：**更多信息 → 仍要运行**。
