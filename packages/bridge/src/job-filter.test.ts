@@ -33,4 +33,23 @@ describe("job-filter", () => {
     strictEqual(prepareTcpPrintPayload(heartbeat), null);
     strictEqual(isMeaningfulPrintJob(heartbeat, "escpos"), false);
   });
+
+  it("treats cash-drawer-only ESC p as non-print job", () => {
+    const drawerOnly = new Uint8Array([0x1b, 0x70, 0x00, 0x3c, 0xff]);
+    strictEqual(isMeaningfulPrintJob(drawerOnly, "escpos"), false);
+  });
+
+  it("keeps receipt with trailing cash drawer in print history", () => {
+    const receiptWithDrawer = new Uint8Array([
+      0x48,
+      0x69,
+      0x0a,
+      0x1b,
+      0x70,
+      0x00,
+      0x19,
+      0xfa,
+    ]);
+    strictEqual(isMeaningfulPrintJob(receiptWithDrawer, "escpos"), true);
+  });
 });

@@ -23,7 +23,7 @@ export {
   isFaultScenario,
 } from "./printer-sim.js";
 export type { CashDrawerKick } from "./cash-drawer.js";
-export { findCashDrawerKicks } from "./cash-drawer.js";
+export { findCashDrawerKicks, isCashDrawerOnlyEscPos } from "./cash-drawer.js";
 
 export type Protocol = "escpos" | "tspl";
 

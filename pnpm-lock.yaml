@@ -134,6 +134,10 @@ importers:
         version: 5.9.3
 
   packages/escpos:
+    dependencies:
+      '@virt-printer/shared':
+        specifier: workspace:*
+        version: link:../shared
     devDependencies:
       tsx:
         specifier: ^4.19.4

@@ -1,3 +1,5 @@
+import { isCashDrawerOnlyEscPos } from "@virt-printer/shared";
+
 /** Strip ESC/POS status / poll sequences, returning bytes that may be print content. */
 export function stripEscPosStatusSequences(payload: Uint8Array): Uint8Array {
   const out: number[] = [];
@@ -108,5 +110,6 @@ function dleEotStatusByte(n: number): Uint8Array {
 export function isMeaningfulPrintJob(payload: Uint8Array, protocol: "escpos" | "tspl"): boolean {
   if (payload.length === 0) return false;
   if (protocol === "tspl") return payload.length > 16;
+  if (isCashDrawerOnlyEscPos(payload)) return false;
   return !isEscPosStatusOrHeartbeat(payload);
 }

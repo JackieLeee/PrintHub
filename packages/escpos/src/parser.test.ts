@@ -151,6 +151,11 @@ describe("parseEscPos", () => {
     strictEqual(isMeaningfulPrintJob(heartbeat, "escpos"), false);
   });
 
+  it("filters cash-drawer-only ESC p as non-print job", () => {
+    const drawerOnly = new Uint8Array([0x1b, 0x70, 0x00, 0x3c, 0xff]);
+    strictEqual(isMeaningfulPrintJob(drawerOnly, "escpos"), false);
+  });
+
   it("decodes UTF-8 Chinese when valid", () => {
     const payload = bytes(...new TextEncoder().encode("订单号\n"));
     const { commands } = parseEscPos(payload);

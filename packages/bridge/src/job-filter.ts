@@ -1,4 +1,5 @@
 import type { Protocol, PrinterSimConfig, PrinterSimScenario } from "@virt-printer/shared";
+import { isCashDrawerOnlyEscPos } from "@virt-printer/shared";
 import { dleEotStatusByte } from "./printer-sim.js";
 
 /** Strip ESC/POS status / poll sequences, returning bytes that may be print content. */
@@ -99,6 +100,7 @@ export function buildDleEotResponses(
 export function isMeaningfulPrintJob(payload: Uint8Array, protocol: Protocol): boolean {
   if (payload.length === 0) return false;
   if (protocol === "tspl") return payload.length > 16;
+  if (isCashDrawerOnlyEscPos(payload)) return false;
   return !isEscPosStatusOrHeartbeat(payload);
 }
 

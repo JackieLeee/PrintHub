@@ -264,6 +264,9 @@ export class VirtPrinterBridge {
       if (rejected) this.broadcast({ type: "sim.event", event: rejected });
       throw new Error("print rejected by printer simulation");
     }
+    if (!isMeaningfulPrintJob(payload, protocol)) {
+      throw new Error("payload has no printable content");
+    }
     return this.emitJob(connection, payload, "raw");
   }
 
