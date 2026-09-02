@@ -51,7 +51,10 @@ jobs:
             exit 1
           fi
 
-      - run: CI=true pnpm install --frozen-lockfile
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        env:
+          CI: true
 
       - name: Verify sharp macOS native binaries
         if: matrix.id == 'mac'
