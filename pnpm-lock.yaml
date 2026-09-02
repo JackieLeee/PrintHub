@@ -23,6 +23,9 @@ importers:
       '@virt-printer/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      sharp:
+        specifier: ^0.34.2
+        version: 0.34.5
     devDependencies:
       '@types/node':
         specifier: ^22.15.3
@@ -33,9 +36,6 @@ importers:
       electron-builder:
         specifier: ^26.0.12
         version: 26.15.3(electron-builder-squirrel-windows@26.15.3)
-      sharp:
-        specifier: ^0.34.2
-        version: 0.34.5
       typescript:
         specifier: ^5.8.3
         version: 5.9.3

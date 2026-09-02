@@ -639,6 +639,38 @@ async function ensureReceiptFonts(): Promise<void> {
   await document.fonts.ready;
 }
 
+function mergedSegmentHighlightRect(
+  element: RenderElement,
+  commandId: string,
+  commands: ParsedCommand[],
+  paperWidthPx: number,
+  layoutCellWidth: number,
+): { x: number; width: number } | null {
+  const mergedIds = element.mergedCommandIds;
+  if (!mergedIds || mergedIds.length <= 1) return null;
+  const index = mergedIds.indexOf(commandId);
+  if (index < 0) return null;
+
+  const segments: SegmentLike[] = mergedIds.map((id) => {
+    const cmd = commands.find((c) => c.id === id && c.category === "text") as TextCommand | undefined;
+    return {
+      content: cmd?.text ?? "",
+      alignment: "left" as const,
+      charWidthMul: element.charWidthMul ?? 1,
+      cellWidthScale: 1,
+    };
+  });
+
+  const seg = segments[index]!;
+  const displayContent =
+    index < segments.length - 1 && seg.alignment !== "right" ? seg.content.trimEnd() : seg.content;
+  const cellW = segmentCellWidth(layoutCellWidth, seg);
+  return {
+    x: segmentDrawX(seg, index, segments, paperWidthPx, layoutCellWidth),
+    width: textWidth(displayContent, cellW, seg.charWidthMul),
+  };
+}
+
 export async function renderReceipt(
   commands: ParsedCommand[],
   paperWidthPx: number,
@@ -723,8 +755,7 @@ export async function renderReceipt(
         if (lineElements.length === 0) break;
         ctx.textAlign = "left";
         for (const element of lineElements) {
-          if (drawnTextElements.has(element)) continue;
-          drawnTextElements.add(element);
+          const alreadyDrawn = drawnTextElements.has(element);
           const content = element.content ?? " ";
           const layoutCell = element.fontSize ?? layout.charWidthPx;
           const charWidthMul = element.charWidthMul ?? state.charWidthMul;
@@ -734,13 +765,26 @@ export async function renderReceipt(
           const invert = element.invert ?? false;
           if (isHighlighted) {
             ctx.fillStyle = "rgba(255, 214, 102, 0.45)";
-            ctx.fillRect(
-              (element.x ?? PAPER_INSET) - 4,
-              element.y - 2,
-              (element.width ?? 0) + 8,
-              element.height + 4,
+            const partial = mergedSegmentHighlightRect(
+              element,
+              command.id,
+              commands,
+              paperWidthPx,
+              layoutCellWidth,
             );
+            if (partial) {
+              ctx.fillRect(partial.x - 4, element.y - 2, partial.width + 8, element.height + 4);
+            } else {
+              ctx.fillRect(
+                (element.x ?? PAPER_INSET) - 4,
+                element.y - 2,
+                (element.width ?? 0) + 8,
+                element.height + 4,
+              );
+            }
           }
+          if (alreadyDrawn) continue;
+          drawnTextElements.add(element);
           const fontPx = layoutCell * charHeightMul * layoutTuning.fontSizeScale;
           const visualHeight = fontPx;
           const yOffset = Math.max(0, element.height - visualHeight);

@@ -46,8 +46,8 @@ const TSPL_META = new Set([
 ]);
 
 const ESCPOS_DRAWABLE = new Set(["text", "image", "rasterImage", "barcode", "qrCode"]);
-const ESCPOS_STATE = new Set(["alignment", "font", "style"]);
-const ESCPOS_META = new Set(["initialize", "codePage", "cut", "cashDrawer", "unsupported"]);
+const ESCPOS_STATE = new Set(["alignment", "font", "style", "codePage"]);
+const ESCPOS_META = new Set(["initialize", "cut", "cashDrawer", "unsupported"]);
 const ESCPOS_LAYOUT = new Set(["feed", "lineFeed", "lineSpacing"]);
 
 function escposDetail(cmd: ParsedCommand): string {

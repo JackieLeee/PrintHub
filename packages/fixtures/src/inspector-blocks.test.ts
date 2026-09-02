@@ -49,6 +49,20 @@ describe("inspector blocks", () => {
     ok(blocks.filter((b) => b.previewable).length >= 5);
   });
 
+  it("folds per-line code page resets into text composites (USA POS style)", () => {
+    const bytes = readFileSync(join(escposDir, "usa-pos-per-line-state.bin"));
+    const { commands, rows } = escposRows(bytes);
+    const blocks = buildEscPosBlocks(rows, commands);
+    strictEqual(blocks.length < 40, true, `expected fewer blocks, got ${blocks.length}`);
+    strictEqual(
+      blocks.filter((b) => b.kind === "setup").length,
+      1,
+      "only leading initialize should remain as setup",
+    );
+    ok(blocks.some((b) => b.detail.includes("#0006")));
+    ok(blocks.every((b) => b.kind !== "setup" || b.rows.every((r) => r.category === "initialize")));
+  });
+
   it("collapses TSPL meta into setup blocks", () => {
     const bytes = readFileSync(join(here, "../tspl/demo-label.tspl"), "utf8");
     const { commands } = parseTspl(new TextEncoder().encode(bytes));

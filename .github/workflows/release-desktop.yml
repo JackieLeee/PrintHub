@@ -51,7 +51,14 @@ jobs:
             exit 1
           fi
 
-      - run: pnpm install --frozen-lockfile
+      - run: CI=true pnpm install --frozen-lockfile
+
+      - name: Verify sharp macOS native binaries
+        if: matrix.id == 'mac'
+        run: |
+          test -d node_modules/@img/sharp-darwin-arm64
+          test -d node_modules/@img/sharp-darwin-x64
+          node -e "require('sharp'); console.log('sharp ok')"
 
       - name: Build desktop installer
         run: ${{ matrix.dist }}

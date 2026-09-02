@@ -16,23 +16,24 @@
     "pack": "pnpm icons && pnpm build && electron-builder --dir",
     "dist": "pnpm icons && pnpm build && pnpm exec electron-builder --mac dmg --arm64 --x64",
     "dist:mac": "pnpm icons && pnpm build && pnpm exec electron-builder --mac dmg --arm64 --x64",
-    "dist:ci": "pnpm build && pnpm exec electron-builder --mac dmg --arm64 --x64",
+    "dist:ci": "pnpm build && pnpm exec electron-builder install-app-deps && pnpm exec electron-builder --mac dmg --arm64 --x64",
     "dist:win": "pnpm icons && pnpm build && pnpm exec electron-builder --win nsis"
   },
   "dependencies": {
     "@virt-printer/bridge": "workspace:*",
-    "@virt-printer/shared": "workspace:*"
+    "@virt-printer/shared": "workspace:*",
+    "sharp": "^0.34.2"
   },
   "devDependencies": {
     "@types/node": "^22.15.3",
     "electron": "^41.0.0",
     "electron-builder": "^26.0.12",
-    "sharp": "^0.34.2",
     "typescript": "^5.8.3"
   },
   "build": {
     "appId": "dev.printhub.desktop",
     "productName": "PrintHub",
+    "npmRebuild": true,
     "directories": {
       "output": "release",
       "buildResources": "assets"
@@ -50,6 +51,7 @@
       }
     ],
     "asarUnpack": [
+      "**/*.node",
       "**/node_modules/sharp/**",
       "**/node_modules/@img/**",
       "assets/**"
@@ -60,7 +62,7 @@
       "icon": "icon.icns",
       "identity": null,
       "artifactName": "${productName}-${version}-mac-${arch}.${ext}",
-      "x64ArchFiles": "**/node_modules/@img/**",
+      "x64ArchFiles": "**/node_modules/{@img,sharp}/**",
       "extendInfo": {
         "CFBundleName": "PrintHub",
         "CFBundleDisplayName": "PrintHub"

@@ -30,15 +30,33 @@ function findPrintHubApp(dir) {
   return null;
 }
 
-function runDarwinPackaged() {
-  console.log("[desktop] macOS: building PrintHub.app (required for menu bar on macOS 26+)…");
-  spawnPnpm(["icons"]);
-  spawnPnpm(["exec", "electron-builder", "--dir"]);
+function hostMacArch() {
+  return process.arch === "arm64" ? "arm64" : "x64";
+}
 
-  const appPath = findPrintHubApp(join(desktopRoot, "release"));
-  if (!appPath) {
-    console.error("[desktop] PrintHub.app not found under release/");
-    process.exit(1);
+function packagedAppPath(arch) {
+  return join(desktopRoot, "release", `mac-${arch}`, "PrintHub.app");
+}
+
+function runDarwinPackaged() {
+  const arch = hostMacArch();
+  console.log(`[desktop] macOS: building PrintHub.app (${arch}, required for menu bar on macOS 26+)…`);
+  spawnPnpm(["icons"]);
+  spawnPnpm(["exec", "electron-builder", "install-app-deps"]);
+  spawnPnpm(["exec", "electron-builder", "--dir", `--${arch}`]);
+
+  const appPath = packagedAppPath(arch);
+  if (!existsSync(appPath)) {
+    // Fallback for older release/ layout (mac/ = x64, mac-arm64/ = arm64).
+    const legacyPath = findPrintHubApp(join(desktopRoot, "release"));
+    if (!legacyPath) {
+      console.error(`[desktop] PrintHub.app not found at ${appPath}`);
+      process.exit(1);
+    }
+    console.warn("[desktop] using legacy release path:", legacyPath);
+    console.log("[desktop] launching", legacyPath);
+    spawnSync("open", ["-n", legacyPath], { stdio: "inherit" });
+    return;
   }
 
   console.log("[desktop] launching", appPath);
