@@ -8,13 +8,7 @@ import { formatDuration } from "../lib/format-duration";
 import { ExportDialog } from "./ExportDialog";
 import { InspectorPanel } from "./InspectorPanel";
 import type { InspectorBlock } from "../lib/inspector-blocks";
-import {
-  MirrorHorizontalIcon,
-  MirrorVerticalIcon,
-  ResetViewIcon,
-  RotateLeftIcon,
-  RotateRightIcon,
-} from "./PreviewViewIcons";
+import { Icon } from "./Icon";
 
 interface Props {
   job: StoredJob | null;
@@ -195,7 +189,7 @@ export function PreviewPanel({
                   setView((v) => ({ ...v, rotation: ((v.rotation + 270) % 360) as PreviewViewTransform["rotation"] }))
                 }
               >
-                <RotateLeftIcon />
+                <Icon name="rotateLeft" />
               </button>
               <button
                 type="button"
@@ -206,7 +200,7 @@ export function PreviewPanel({
                   setView((v) => ({ ...v, rotation: ((v.rotation + 90) % 360) as PreviewViewTransform["rotation"] }))
                 }
               >
-                <RotateRightIcon />
+                <Icon name="rotateRight" />
               </button>
               <button
                 type="button"
@@ -215,7 +209,7 @@ export function PreviewPanel({
                 aria-label={t.preview.mirrorH}
                 onClick={() => setView((v) => ({ ...v, mirrorH: !v.mirrorH }))}
               >
-                <MirrorHorizontalIcon />
+                <Icon name="flipHorizontal" />
               </button>
               <button
                 type="button"
@@ -224,7 +218,7 @@ export function PreviewPanel({
                 aria-label={t.preview.mirrorV}
                 onClick={() => setView((v) => ({ ...v, mirrorV: !v.mirrorV }))}
               >
-                <MirrorVerticalIcon />
+                <Icon name="flipVertical" />
               </button>
               <button
                 type="button"
@@ -234,7 +228,7 @@ export function PreviewPanel({
                 aria-label={t.preview.resetView}
                 onClick={() => setView(DEFAULT_VIEW)}
               >
-                <ResetViewIcon />
+                <Icon name="refresh" />
                 <span>{t.preview.resetView}</span>
               </button>
             </div>

@@ -16,6 +16,9 @@
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
+  --icon-size-header: 16px;
+  --icon-size-toolbar: 14px;
+  --icon-size-disclosure: 18px;
   --scrollbar-size: 6px;
   --scrollbar-thumb: rgba(139, 147, 167, 0.55);
   --scrollbar-thumb-hover: rgba(139, 147, 167, 0.78);
@@ -499,8 +502,9 @@ html.desktop-custom-chrome .workbench.panel {
 
 .disclosure-toggle-icon {
   display: block;
-  width: 18px;
-  height: 18px;
+  flex-shrink: 0;
+  width: var(--icon-size-disclosure);
+  height: var(--icon-size-disclosure);
 }
 
 .disclosure-toggle--open {
@@ -1184,6 +1188,8 @@ html.desktop-custom-chrome .workbench.panel {
 
 .github-link-icon {
   flex-shrink: 0;
+  width: var(--icon-size-header);
+  height: var(--icon-size-header);
 }
 
 .lang-select-wrap {
@@ -1197,6 +1203,8 @@ html.desktop-custom-chrome .workbench.panel {
 
 .lang-globe-icon {
   flex-shrink: 0;
+  width: var(--icon-size-header);
+  height: var(--icon-size-header);
   color: var(--muted);
 }
 
@@ -1688,8 +1696,9 @@ button:hover {
 
 .segmented-btn--icon svg,
 .segmented-btn--icon-text svg {
-  width: 14px;
-  height: 14px;
+  flex-shrink: 0;
+  width: var(--icon-size-toolbar);
+  height: var(--icon-size-toolbar);
 }
 
 .segmented-btn:disabled {

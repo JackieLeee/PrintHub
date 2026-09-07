@@ -23,6 +23,9 @@ importers:
       '@virt-printer/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      reicon:
+        specifier: ^1.2.4
+        version: 1.2.4
       sharp:
         specifier: ^0.34.2
         version: 0.34.5
@@ -69,6 +72,9 @@ importers:
       react-dom:
         specifier: ^19.1.0
         version: 19.2.8(react@19.2.8)
+      reicon-react:
+        specifier: ^1.2.5
+        version: 1.2.5(react@19.2.8)
     devDependencies:
       '@types/react':
         specifier: ^19.1.2
@@ -1954,6 +1960,14 @@ packages:
 
   regenerator-runtime@0.13.11:
     resolution: {integrity: sha512-kY1AZVr2Ra+t+piVaJ4gxaFaReZVH40AKNo7UCX6W+dEwBo/2oZJzqfuN1qLq1oL45o56cPaTXELwrTh8Fpggg==}
+
+  reicon-react@1.2.5:
+    resolution: {integrity: sha512-+gAKb9k0y/c0t6/l8qiTspxf4RU3omXirr/4/io7Cwp+RCr4FnrxIWKhSSu367BpGyLP745nJ2CmusxWnpOu8g==}
+    peerDependencies:
+      react: '>=16.8.0'
+
+  reicon@1.2.4:
+    resolution: {integrity: sha512-rjTDLJIYXc4kDaw3/g2IhggGCkZHtlahdOKaWvqoo/QxsKVc3sHOM0OdNH83nZTAmvCvsWQp8wHPF9USo76TYA==}
 
   require-directory@2.1.1:
     resolution: {integrity: sha512-fGxEI7+wsG9xrvdjsrlmL22OMTTiHRwAMroiEeMgq8gzoLC/PQr7RsRDSTLUg/bZAZtF+TVIkHc6/4RIKrui+Q==}
@@ -4056,6 +4070,12 @@ snapshots:
 
   regenerator-runtime@0.13.11:
     optional: true
+
+  reicon-react@1.2.5(react@19.2.8):
+    dependencies:
+      react: 19.2.8
+
+  reicon@1.2.4: {}
 
   require-directory@2.1.1: {}
 
