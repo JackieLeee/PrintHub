@@ -1,6 +1,6 @@
 {
   "name": "PrintHub",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "private": true,
   "scripts": {
     "dev": "pnpm build:web && pnpm --filter @virt-printer/bridge dev",
