@@ -13,8 +13,21 @@ export interface MdnsHandle {
   stop: () => void;
 }
 
+/** bonjour-service throws on send failure by default; log instead of crashing Electron main. */
+function onMdnsSendError(err: unknown): void {
+  console.warn("[bridge] mDNS send error (network may be unavailable):", err);
+}
+
+function attachMdnsSocketGuards(bonjour: Bonjour): void {
+  const mdns = (bonjour as unknown as { server?: { mdns?: NodeJS.EventEmitter } }).server?.mdns;
+  if (!mdns) return;
+  mdns.on("warning", (err: unknown) => console.warn("[bridge] mDNS warning:", err));
+  mdns.on("error", (err: unknown) => console.warn("[bridge] mDNS socket error:", err));
+}
+
 export function startMdnsAdvertise(options: MdnsAdvertiseOptions): MdnsHandle {
-  const bonjour = new Bonjour();
+  const bonjour = new Bonjour({}, onMdnsSendError);
+  attachMdnsSocketGuards(bonjour);
   const services: Service[] = [];
 
   try {
