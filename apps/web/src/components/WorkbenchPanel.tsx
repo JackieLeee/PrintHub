@@ -9,6 +9,7 @@ import { RawPrintPanel } from "./RawPrintPanel";
 export type WorkbenchRightTab = "network" | "debug";
 
 interface Props {
+  demoMode?: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   rightTab: WorkbenchRightTab;
@@ -30,6 +31,7 @@ interface Props {
 }
 
 export function WorkbenchPanel({
+  demoMode = false,
   open,
   onOpenChange,
   rightTab,
@@ -68,8 +70,8 @@ export function WorkbenchPanel({
       <span className={`pill ${scenario === "normal" ? "ok" : "warn"}`}>
         {t.sim.scenarios[scenario]}
       </span>
-      <span className={`pill ${bridgeOk ? "ok" : "warn"}`}>
-        {bridgeOk ? t.network.bridgeOnline : t.network.waitingBridge}
+      <span className={`pill ${bridgeOk ? "ok" : demoMode ? "" : "warn"}`}>
+        {bridgeOk ? t.network.bridgeOnline : demoMode ? t.demo.offline : t.network.waitingBridge}
       </span>
       {hostIp && (
         <span className="workbench-header-meta">

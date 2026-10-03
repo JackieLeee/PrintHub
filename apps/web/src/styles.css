@@ -3998,3 +3998,17 @@ code {
     animation: none;
   }
 }
+
+/* Standalone demo: samples first, network setup on request. */
+.demo-start {
+  padding: 16px;
+  margin-bottom: 12px;
+}
+.demo-start-copy h2 { margin: 0 0 6px; font-size: 18px; }
+.demo-start-copy p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.6; max-width: 780px; }
+.demo-start-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.demo-start-actions button { min-height: 36px; }
+.demo-sample-btn { border-color: var(--accent); }
+.demo-start-actions button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.demo-start-actions button:disabled { opacity: 0.5; cursor: not-allowed; }
+.demo-start-actions button:active:not(:disabled) { transform: translateY(1px); }
