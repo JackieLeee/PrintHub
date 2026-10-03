@@ -30,6 +30,16 @@ export const zh: Translations = {
     subtitleOffline: "ESC/POS 与 TSPL · 等待 Bridge 连接…",
     loadingHistory: "加载历史…",
   },
+  demo: {
+    subtitle: "ESC/POS & TSPL · 浏览器演示",
+    title: "先看打印效果，无需实体打印机",
+    hint: "体验小票或标签，检查指令并导出预览。示例在浏览器本地运行；接收 TCP 打印任务时再连接 Bridge。",
+    receipt: "体验小票",
+    label: "体验标签",
+    edit: "编辑原始数据",
+    bridge: "连接 Bridge",
+    offline: "本地预览已就绪",
+  },
   desktopChrome: {
     windowControls: "窗口控制",
     close: "关闭",

@@ -7,9 +7,13 @@
 [![Node.js](https://img.shields.io/badge/Node.js-20%2B-green?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![pnpm](https://img.shields.io/badge/pnpm-9%2B-F69220?logo=pnpm&logoColor=white)](https://pnpm.io/)
 
-LAN **virtual printer** for **ESC/POS** receipts and **TSPL** labels — receive raw TCP print jobs, preview in the browser, replay history, and debug without hardware.
+**Debug ESC/POS receipts and TSPL labels without a physical printer.** PrintHub is a virtual printer for POS and label developers: preview print output, inspect commands, and replay jobs in the browser.
 
-**New in v1.1.0:** Inspector ↔ preview linkage · PNG/PDF export · `@virt-printer/analyze` for agents · Star dialect detection · expanded command reference & fixture corpus.
+**[Try the web demo](https://jackieleee.github.io/PrintHub/)** · **[Download the desktop app](https://github.com/JackieLeee/PrintHub/releases)** · [Run from source](#run-from-source)
+
+On your first visit, the demo opens with a sample receipt. Choose **Try receipt** or **Try label** to explore the preview, then load your own File / Hex / Base64 payload in Debug print. Local previews work without Bridge; receiving raw TCP print jobs requires the desktop app (Bridge included) or a local Bridge.
+
+![ESC/POS receipt preview with barcode, QR code, and print history](./docs/assets/desktop-preview-history.png)
 
 ## Features
 
@@ -24,43 +28,57 @@ LAN **virtual printer** for **ESC/POS** receipts and **TSPL** labels — receive
 | **Desktop** | Electron + Bridge, tray, EN/中文, optional LAN HTTP |
 | **Discovery** | mDNS `_pdl-datastream._tcp` on **9100** |
 
-**Ports:** TCP **9100** (print, always on) · HTTP **8081** (Web UI + API; CLI always on, desktop optional)
+**With Bridge running:** TCP **9100** (print) · HTTP **8081** (Web UI + API; CLI always on, desktop optional)
+
+**Added in v1.1.0:** Inspector ↔ preview linkage · PNG/PDF export · `@virt-printer/analyze` for agents · Star dialect detection · expanded command reference & fixture corpus.
 
 ## Download
 
-[Releases](https://github.com/JackieLeee/PrintHub/releases) · [Web demo](https://jackieleee.github.io/PrintHub/) (UI only, no TCP)
+[Download installers and release notes](https://github.com/JackieLeee/PrintHub/releases). The desktop app includes Bridge for receiving print jobs over your LAN.
 
 | Platform | File |
 |----------|------|
-| macOS (Apple Silicon) | `*-mac-arm64.dmg` ~110 MB |
-| macOS (Intel) | `*-mac-x64.dmg` ~110 MB |
-| Windows x64 | `*-win-x64.exe` ~99 MB |
+| macOS (Apple Silicon) | `*-mac-arm64.dmg` |
+| macOS (Intel) | `*-mac-x64.dmg` |
+| Windows x64 | `*-win-x64.exe` |
 
 > **Unsigned builds.** macOS: right-click → **Open**. Windows: **More info → Run anyway**.
 
-## Quick start
+1. Install and launch PrintHub, then open its built-in workbench.
+2. Point your POS or label application at **`<PrintHub host IP>:9100`**.
+3. To open the workbench from another device, enable LAN HTTP in the tray menu and visit `http://<PrintHub host IP>:8081`.
 
-**Node.js 20+ · pnpm 9+**
+## Run from source
+
+**Node.js 20+ · pnpm 9.15.9** (the version pinned in `package.json`).
 
 ```bash
+git clone https://github.com/JackieLeee/PrintHub.git
+cd PrintHub
 pnpm install
-pnpm dev          # CLI: Web UI + Bridge on :8081
-pnpm dev:desktop  # Electron app
+pnpm dev          # Builds the Web UI and starts Bridge
 ```
 
-1. Open **http://localhost:8081** (LAN: `http://<host>:8081`)
-2. Point POS at **`<host>:9100`**
+1. Keep the command running and open **http://localhost:8081** (LAN: `http://<host>:8081`).
+2. Point your POS or label application at **`<host>:9100`**. Use `localhost` if it runs on the same computer.
+3. Send a print job and inspect its preview and commands in the workbench.
 
 ```bash
-# TCP smoke test
+# TCP smoke test (requires netcat with -N support)
 printf '\x1b@\x1ba\x01Hello PrintHub\n\x1dV\x00' | nc -N localhost 9100
+```
+
+To run the Electron app from the same clone instead, stop the CLI Bridge first so port 9100 is free, then run:
+
+```bash
+pnpm dev:desktop
 ```
 
 **Packaging:** `pnpm dist:desktop` (macOS) · `pnpm dist:desktop:win` (Windows)
 
-| Workbench | Preview & history | Debug print |
-|:---:|:---:|:---:|
-| ![Workbench](./docs/assets/desktop-workbench.png) | ![Preview](./docs/assets/desktop-preview-history.png) | ![Debug](./docs/assets/desktop-debug-tspl.png) |
+| Workbench | TSPL label debugging |
+|:---:|:---:|
+| ![Workbench](./docs/assets/desktop-workbench.png) | ![TSPL label debug preview](./docs/assets/desktop-debug-tspl.png) |
 
 ## Architecture
 
@@ -68,7 +86,11 @@ printf '\x1b@\x1ba\x01Hello PrintHub\n\x1dV\x00' | nc -N localhost 9100
 
 `apps/desktop` · `apps/web` · `packages/bridge` · `packages/{escpos,tspl,renderer,analyze,fixtures}` · `packages/{shared,relay-client}`
 
-**Analyze (CLI):** `pnpm exec printhub-analyze path/to/job.bin`
+**Analyze (CLI):** From the repository root, analyze a captured payload as JSON. Use an absolute path to your `.bin` or `.tspl` file:
+
+```bash
+pnpm --filter @virt-printer/analyze exec node --import tsx src/cli.ts /path/to/job.bin
+```
 
 ---
 

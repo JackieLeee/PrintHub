@@ -30,6 +30,7 @@ import {
   saveBridgeBase,
   resolveHttpBaseFromBridge,
 } from "./lib/bridge-url";
+import { getEscPosSampleBytes, getTsplSampleBytes, ESCPOS_SAMPLE_FILENAME, TSPL_SAMPLE_FILENAME } from "./lib/samples";
 import { loadReceiptFontId } from "./lib/receipt-font-preference";
 
 export interface StoredJob extends PrintJobMeta {
@@ -44,13 +45,17 @@ function initialWsUrl(): string {
 export function App() {
   const { t, format } = useLocale();
   const [wsUrl, setWsUrl] = useState(initialWsUrl);
+  const [bridgeConnectAttempt, setBridgeConnectAttempt] = useState(0);
   const [bridgeInput, setBridgeInput] = useState(() => loadBridgeBase()?.replace(/^https?:\/\//, "") ?? "");
   const [connected, setConnected] = useState(false);
   const [status, setStatus] = useState<HubStatus | null>(null);
   const [jobs, setJobs] = useState<StoredJob[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [historyReady, setHistoryReady] = useState(false);
-  const [workbenchOpen, setWorkbenchOpen] = useState(true);
+  // ?demo=1 lets contributors review the Pages experience on localhost.
+  const demoMode = !isDesktopShell() && (isExternalDemoHost() || new URLSearchParams(window.location.search).get("demo") === "1");
+  const [workbenchOpen, setWorkbenchOpen] = useState(() => !demoMode);
+  const demoInitialized = useRef(false);
   const [rightTab, setRightTab] = useState<WorkbenchRightTab>("network");
   const clientRef = useRef<RelayClient | DesktopRelayClient | null>(null);
   const activeHubIdRef = useRef<string>("");
@@ -146,6 +151,18 @@ export function App() {
     [addJob],
   );
 
+  // Seed only an empty demo history, once per mount. Never replace a returning
+  // visitor's selected job or re-add the sample after they clear history.
+  useEffect(() => {
+    if (!demoMode || !historyReady || demoInitialized.current) return;
+    demoInitialized.current = true;
+    // Explicit Bridge sessions retain their own history-first startup. Their
+    // concurrent hub reloads must not compete with an automatic demo sample.
+    const params = new URLSearchParams(window.location.search);
+    if (loadBridgeBase() || params.has("ws") || params.has("bridge")) return;
+    if (jobs.length === 0) previewLocalJob(getEscPosSampleBytes(), ESCPOS_SAMPLE_FILENAME);
+  }, [demoMode, historyReady, jobs.length, previewLocalJob]);
+
   const connectBridge = useCallback(
     (address?: string) => {
       const raw = (address ?? bridgeInput).trim();
@@ -155,6 +172,8 @@ export function App() {
         saveBridgeBase(base);
         setBridgeInput(base.replace(/^https?:\/\//, ""));
         setWsUrl(bridgeBaseToWsUrl(base));
+        // An explicit connection must also run when the address is unchanged.
+        setBridgeConnectAttempt((attempt) => attempt + 1);
       } catch {
         /* invalid input */
       }
@@ -232,12 +251,15 @@ export function App() {
 
   useEffect(() => {
     if (desktopShell && !ipcReady) return;
-    connect();
+    // A standalone demo does not need a local WebSocket connection. Keep
+    // explicit URL overrides and saved Bridge connections working as before.
+    const params = new URLSearchParams(window.location.search);
+    if (!demoMode || loadBridgeBase() || params.has("ws") || params.has("bridge")) connect();
     return () => {
       clientRef.current?.disconnect();
       void flushHistory();
     };
-  }, [connect, desktopShell, ipcReady]);
+  }, [connect, desktopShell, ipcReady, demoMode, bridgeConnectAttempt]);
 
   useEffect(() => {
     if (!connected || !status) return;
@@ -347,7 +369,7 @@ export function App() {
             <p className="subtitle">
               {hostIp
                 ? format(t.app.subtitle, { host: hostIp, tcp: tcpPort })
-                : t.app.subtitleOffline}
+                : demoMode ? t.demo.subtitle : t.app.subtitleOffline}
             </p>
           )}
         </div>
@@ -358,7 +380,33 @@ export function App() {
         />
       </header>
 
+      {demoMode && (
+        <section className="demo-start panel" aria-labelledby="demo-title">
+          <div className="demo-start-copy">
+            <h2 id="demo-title">{t.demo.title}</h2>
+            <p>{t.demo.hint}</p>
+          </div>
+          <div className="demo-start-actions">
+            <button type="button" className="demo-sample-btn" disabled={!historyReady}
+              onClick={() => previewLocalJob(getEscPosSampleBytes(), ESCPOS_SAMPLE_FILENAME)}>
+              {t.demo.receipt}
+            </button>
+            <button type="button" className="demo-sample-btn" disabled={!historyReady}
+              onClick={() => previewLocalJob(getTsplSampleBytes(), TSPL_SAMPLE_FILENAME)}>
+              {t.demo.label}
+            </button>
+            <button type="button" className="btn-ghost" onClick={() => {
+              setRightTab("debug"); setWorkbenchOpen(true);
+            }}>{t.demo.edit}</button>
+            <button type="button" className="btn-ghost" onClick={() => {
+              setRightTab("network"); setWorkbenchOpen(true);
+            }}>{t.demo.bridge}</button>
+          </div>
+        </section>
+      )}
+
       <WorkbenchPanel
+        demoMode={demoMode}
         open={workbenchOpen}
         onOpenChange={setWorkbenchOpen}
         rightTab={rightTab}

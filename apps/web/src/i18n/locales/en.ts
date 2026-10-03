@@ -30,6 +30,16 @@ export const en: Translations = {
     subtitleOffline: "ESC/POS & TSPL · Waiting for Bridge…",
     loadingHistory: "Loading history…",
   },
+  demo: {
+    subtitle: "ESC/POS & TSPL · Browser demo",
+    title: "Preview a print job. No printer needed.",
+    hint: "Try a receipt or label, inspect its commands, and export the preview. Samples run locally in your browser. Connect Bridge only to receive TCP jobs.",
+    receipt: "Try receipt",
+    label: "Try label",
+    edit: "Edit raw data",
+    bridge: "Connect Bridge",
+    offline: "Local preview ready",
+  },
   desktopChrome: {
     windowControls: "Window controls",
     close: "Close",

@@ -21,6 +21,16 @@ export interface Translations {
     subtitleOffline: string;
     loadingHistory: string;
   };
+  demo: {
+    subtitle: string;
+    title: string;
+    hint: string;
+    receipt: string;
+    label: string;
+    edit: string;
+    bridge: string;
+    offline: string;
+  };
   desktopChrome: {
     windowControls: string;
     close: string;
