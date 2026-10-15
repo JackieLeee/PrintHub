@@ -30,8 +30,9 @@ function run(args: string[], signal?: NodeJS.Signals) {
 
 test("control CLI integrates actual HTTP service and job broadcaster on ephemeral loopback", async (t) => {
   const dir = await mkdtemp(join(tmpdir(), "printhub-cli-"));
+  await writeFile(join(dir, "index.html"), "<!doctype html><title>Test SPA</title>");
   const bridge = new VirtPrinterBridge({ host: "127.0.0.1", advertiseMdns: false });
-  const server = startHttpServer({ host: "127.0.0.1", port: 0, bridge });
+  const server = startHttpServer({ host: "127.0.0.1", port: 0, bridge, webRoot: dir });
   await once(server, "listening");
   const wss = new WebSocketServer({ server });
   wss.on("connection", (ws) => ws.send(JSON.stringify({ type: "hub.status", status: bridge.getPublicStatus() })));
@@ -39,7 +40,9 @@ test("control CLI integrates actual HTTP service and job broadcaster on ephemera
   const url = `http://127.0.0.1:${(server.address() as any).port}`;
   const call = (...args: string[]) => run([...args, "--url", url, "--timeout-ms", "3000", "--request-id", "test-correlation"]);
   t.after(async () => { unsubscribe(); for (const ws of wss.clients) ws.terminate(); wss.close(); server.closeAllConnections(); await new Promise<void>((resolve) => server.close(() => resolve())); await rm(dir, { recursive: true, force: true }); });
-  await t.test("health/status and schema envelopes", async () => {
+  await t.test("health/status and schema envelopes with static UI enabled", async () => {
+    assert.match(await (await fetch(url)).text(), /Test SPA/);
+    assert.equal(((await (await fetch(`${url}/sim/config`)).json()) as { scenario: string }).scenario, "normal");
     for (const command of ["health", "status", "schema"]) {
       const res = await call(command); assert.equal(res.code, 0); assert.equal(res.data.schemaVersion, 1); assert.equal(res.data.requestId, "test-correlation"); assert.equal(res.stderr, "");
     }
