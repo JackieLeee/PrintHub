@@ -81,3 +81,11 @@ MIT · [CONTRIBUTING](./CONTRIBUTING.md) · [SECURITY](./SECURITY.md)
    <img alt="Star 趋势" src="https://api.star-history.com/chart?repos=JackieLeee/PrintHub&type=date&legend=bottom-right&sealed_token=nZ7TJ03ductF3SiTo2_x9Ry8wmdRlWLIKmXdxoqRfHGkvFTL1NlWxsoL_mwD-dvCVfMZyzyZBzIM8Ihzq8OU20MkofoZvSxuyMsDOOtdZ4QVigSvLemN2CREu9Vshu8wZoD0fdcGEmLEiHpFYXfkdgGvjq8Zi8n1CIzMHumwS2FRSd_6JyewdE8DLc-K" />
  </picture>
 </a>
+
+### 自动化控制 CLI
+
+运行 `pnpm test:control` 构建并验证，再运行
+`node packages/bridge/dist/control-cli.js --help` 查看命令。支持 JSON 状态查询、
+带实例及版本保护的模拟配置备份/修改/恢复、原始数据及图片提交、限时任务捕获。
+详见 [控制 CLI 合约与安全边界](docs/control-cli.md)。成功仅代表虚拟桥接器捕获，
+不代表实体打印成功。CLI 的 localhost 地址不会改变服务器的监听范围。

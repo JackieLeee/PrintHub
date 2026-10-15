@@ -61,8 +61,8 @@ for (const el of textEls) {
 
 // Simulate multi-segment lines from raw commands for header row
 const texts = commands.filter((c) => c.category === "text") as Array<{ text: string; id: string }>;
-let pending: Array<{ content: string; alignment: string; bold?: boolean }> = [];
-let align = "left";
+let pending: Array<{ content: string; alignment: "left" | "center" | "right"; bold?: boolean }> = [];
+let align: "left" | "center" | "right" = "left";
 let bold = false;
 const flush = () => {
   if (pending.length > 1) {

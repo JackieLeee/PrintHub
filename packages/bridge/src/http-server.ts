@@ -1,5 +1,6 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { VirtPrinterBridge } from "./bridge.js";
+import { validateConfigPatch } from "./control-config.js";
 import { tryServeStatic } from "./web-static.js";
 
 export interface HttpServerOptions {
@@ -73,6 +74,23 @@ export function startHttpServer(options: HttpServerOptions): Server {
 
     if (req.method === "GET" && url.pathname === "/status") {
       sendJson(res, 200, bridge.getPublicStatus());
+      return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/sim/config/snapshot") {
+      sendJson(res, 200, bridge.getConfigSnapshot());
+      return;
+    }
+    if (req.method === "POST" && url.pathname === "/sim/config/compare-and-set") {
+      try {
+        const json = JSON.parse((await readBody(req, 64 * 1024)).toString("utf8"));
+        if (typeof json.hubInstanceId !== "string" || !Number.isSafeInteger(json.revision) || json.revision < 0) throw new Error("invalid config precondition");
+        validateConfigPatch(json.config);
+        const snapshot = bridge.compareAndSetConfig(json.hubInstanceId, json.revision, json.config, httpClientIp(req));
+        sendJson(res, snapshot ? 200 : 409, snapshot ?? { error: "config changed or hub restarted" });
+      } catch (err) {
+        sendJson(res, 400, { error: err instanceof Error ? err.message : "invalid config" });
+      }
       return;
     }
 

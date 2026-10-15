@@ -5,13 +5,14 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "virt-printer-bridge": "./dist/cli.js"
+    "virt-printer-bridge": "./dist/cli.js",
+    "printhub": "./dist/control-cli.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "dev": "tsx watch src/cli.ts",
     "start": "node dist/cli.js",
-    "test": "tsx --test src/chunking.test.ts src/job-filter.test.ts"
+    "test": "node --import tsx --test src/chunking.test.ts src/job-filter.test.ts src/control-cli.test.ts"
   },
   "dependencies": {
     "@virt-printer/shared": "workspace:*",
