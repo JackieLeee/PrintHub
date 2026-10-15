@@ -33,6 +33,7 @@ import { startMdnsAdvertise, type MdnsHandle } from "./mdns.js";
 import { resolveWebRoot } from "./web-static.js";
 
 export interface BridgeOptions {
+  advertiseMdns?: boolean;
   tcpPort?: number;
   wsPort?: number;
   httpPort?: number;
@@ -44,7 +45,9 @@ export interface BridgeOptions {
 }
 
 function getLocalIp(): string {
-  const nets = networkInterfaces();
+  // Network enumeration can be unavailable in restricted/container runtimes.
+  let nets: ReturnType<typeof networkInterfaces>;
+  try { nets = networkInterfaces(); } catch { return "127.0.0.1"; }
   for (const name of Object.keys(nets)) {
     for (const net of nets[name] ?? []) {
       if (net.family === "IPv4" && !net.internal) return net.address;
@@ -86,6 +89,8 @@ export class VirtPrinterBridge {
   private mdnsPrinter = false;
   private webRoot: string | null = null;
   private printerSim = new PrinterSimState();
+  private configRevision = 0;
+  private advertiseMdns: boolean;
   private tcpQueues = new Map<string, TcpQueueEntry>();
   private tcpSockets = new Map<string, Socket>();
 
@@ -127,6 +132,7 @@ export class VirtPrinterBridge {
   }
 
   constructor(options: BridgeOptions = {}) {
+    this.advertiseMdns = options.advertiseMdns ?? true;
     this.hubInstanceId = randomUUID();
     this.tcpPort = options.tcpPort ?? DEFAULT_TCP_PORT;
     this.httpPort = options.httpPort ?? DEFAULT_HTTP_PORT;
@@ -172,14 +178,14 @@ export class VirtPrinterBridge {
     }
 
     try {
-      this.mdns = startMdnsAdvertise({
+      if (this.advertiseMdns) this.mdns = startMdnsAdvertise({
         name: `PrintHub-${hostname()}`,
         hostIp: lan,
         wsPort: this.enableHttp ? this.wsPort : 0,
         tcpPort: this.tcpPort,
         httpPort: this.enableHttp ? this.httpPort : 0,
       });
-      this.mdnsPrinter = true;
+      this.mdnsPrinter = this.advertiseMdns;
     } catch (err) {
       this.mdnsPrinter = false;
       console.warn("[bridge] mDNS start failed:", err);
@@ -210,11 +216,23 @@ export class VirtPrinterBridge {
 
   setPrinterSimConfig(partial: Partial<PrinterSimConfig>, sourceIp?: string): PrinterSimConfig {
     const config = this.printerSim.setConfig(partial, sourceIp);
+    this.configRevision += 1;
     if (this.printerSim.isOffline()) {
       this.disconnectAllTcpClients();
     }
     this.broadcastStatus();
     return config;
+  }
+
+  getConfigSnapshot() {
+    return { hubInstanceId: this.hubInstanceId, revision: this.configRevision, config: this.getPrinterSimConfig() };
+  }
+
+  /** Atomic in this process; all config writers increment the revision. */
+  compareAndSetConfig(instance: string, revision: number, config: Partial<PrinterSimConfig>, sourceIp?: string) {
+    if (instance !== this.hubInstanceId || revision !== this.configRevision) return null;
+    this.setPrinterSimConfig(config, sourceIp);
+    return this.getConfigSnapshot();
   }
 
   clearSimEvents(): void {

@@ -81,3 +81,11 @@ MIT · [CONTRIBUTING](./CONTRIBUTING.md) · [SECURITY](./SECURITY.md)
    <img alt="Star History" src="https://api.star-history.com/chart?repos=JackieLeee/PrintHub&type=date&legend=bottom-right&sealed_token=nZ7TJ03ductF3SiTo2_x9Ry8wmdRlWLIKmXdxoqRfHGkvFTL1NlWxsoL_mwD-dvCVfMZyzyZBzIM8Ihzq8OU20MkofoZvSxuyMsDOOtdZ4QVigSvLemN2CREu9Vshu8wZoD0fdcGEmLEiHpFYXfkdgGvjq8Zi8n1CIzMHumwS2FRSd_6JyewdE8DLc-K" />
  </picture>
 </a>
+
+### Automation control CLI
+
+Use `pnpm test:control` to build and test the JSON control CLI, then run
+`node packages/bridge/dist/control-cli.js --help`. It supports health/status,
+revision-guarded simulation backup/change/restore, raw/image submission, and bounded
+WebSocket job capture. See [the automation contract and security boundaries](docs/control-cli.md).
+This confirms virtual capture, not physical printing.

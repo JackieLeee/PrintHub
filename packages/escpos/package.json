@@ -9,6 +9,7 @@
     "test": "tsx --test src/parser.test.ts src/paper-width.test.ts src/raster-detect.test.ts src/encoding.test.ts src/dialect.test.ts"
   },
   "devDependencies": {
+    "@types/node": "^22.15.3",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3"
   },

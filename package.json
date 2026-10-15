@@ -15,7 +15,9 @@
     "start": "pnpm build:web && pnpm --filter @virt-printer/bridge start",
     "build": "turbo build",
     "lint": "turbo lint",
-    "test": "pnpm --filter @virt-printer/escpos test && pnpm --filter @virt-printer/fixtures test && pnpm --filter @virt-printer/analyze test"
+    "test": "pnpm --filter @virt-printer/escpos test && pnpm --filter @virt-printer/fixtures test && pnpm --filter @virt-printer/analyze test",
+    "printhub": "node packages/bridge/dist/control-cli.js",
+    "test:control": "pnpm --filter @virt-printer/shared build && pnpm --filter @virt-printer/tspl build && pnpm --filter @virt-printer/bridge build && pnpm --filter @virt-printer/bridge test"
   },
   "devDependencies": {
     "turbo": "^2.5.4",

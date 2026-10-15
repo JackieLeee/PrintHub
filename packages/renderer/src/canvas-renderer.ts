@@ -110,7 +110,7 @@ function receiptFont(
   ctx.font = `${weight} ${fontSize}px ${family}`;
 }
 
-function segmentPaperCols(seg: Pick<SegmentLike, "content" | "charWidthMul">): number {
+function segmentPaperCols(seg: Pick<SegmentLike, "content"> & Partial<Pick<SegmentLike, "charWidthMul">>): number {
   return receiptCellCount(seg.content) * (seg.charWidthMul ?? 1);
 }
 
@@ -245,7 +245,7 @@ function segmentCellWidth(layoutCellWidth: number, seg: SegmentLike): number {
 
 /** Column index for multi-segment POS lines (space-padded fields + trailing right values). */
 export function segmentStartCol(
-  segments: Array<Pick<SegmentLike, "content" | "alignment" | "charWidthMul">>,
+  segments: Array<Pick<SegmentLike, "content" | "alignment"> & Partial<Pick<SegmentLike, "charWidthMul">>>,
   index: number,
   maxCols: number,
 ): number {

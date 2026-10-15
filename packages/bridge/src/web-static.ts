@@ -61,7 +61,7 @@ function contentType(filePath: string): string {
 }
 
 function isApiPath(pathname: string): boolean {
-  return pathname === "/health" || pathname === "/status" || pathname.startsWith("/print/");
+  return pathname === "/health" || pathname === "/status" || pathname.startsWith("/print/") || pathname.startsWith("/sim/");
 }
 
 /** Serve static SPA assets; returns true if handled. */
